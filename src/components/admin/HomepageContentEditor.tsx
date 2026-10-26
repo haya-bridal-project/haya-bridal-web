@@ -21,11 +21,7 @@ export function HomepageContentEditor({
   // Active slide editor
   const [editingSlide, setEditingSlide] = useState<Partial<HeroSlide> | null>(null);
   const [slideAssets, setSlideAssets] = useState<UploadedAsset[]>([]);
-  const [logoAssets, setLogoAssets] = useState<UploadedAsset[]>(
-    initialSettings.brand.logo_url
-      ? [{ url: initialSettings.brand.logo_url, public_id: initialSettings.brand.logo_public_id || "" }]
-      : []
-  );
+
 
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState(false);
@@ -94,19 +90,13 @@ export function HomepageContentEditor({
   const handleSaveSettings = async () => {
     setSaving(true);
     try {
-      const updatedBrand = {
-        ...settings.brand,
-        logo_url: logoAssets[0]?.url || null,
-        logo_public_id: logoAssets[0]?.public_id || null,
-      };
-
       const res = await fetch("/api/admin/homepage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "save_settings",
           settings: {
-            brand: updatedBrand,
+            brand: settings.brand,
             home: settings.home,
             contact: settings.contact,
           },
@@ -151,24 +141,7 @@ export function HomepageContentEditor({
         </div>
       )}
 
-      {/* 1. Brand Logo Management */}
-      <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-4">
-        <div>
-          <h2 className="font-serif text-lg text-[#2B211C]">
-            Site Brand Logo (Cloudinary)
-          </h2>
-          <p className="text-xs text-[#7A6A5F]">
-            Upload an official Haya brand logo. If empty, the precise vector SVG bridal medallion icon is used.
-          </p>
-        </div>
 
-        <CloudinaryUploader
-          role="logo"
-          multiple={false}
-          assets={logoAssets}
-          onChange={setLogoAssets}
-        />
-      </div>
 
       {/* 2. Hero Slides Management */}
       <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-5">

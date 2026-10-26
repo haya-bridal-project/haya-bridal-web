@@ -6,11 +6,11 @@ import Image from "next/image";
 import {
   ChevronLeft,
   ChevronRight,
-  Sparkles,
+  ArrowRight,
+  Shield,
   Scissors,
   Tag,
-  ShieldCheck,
-  ArrowRight,
+  CheckCircle2,
 } from "lucide-react";
 import type { HeroSlide } from "@/lib/types";
 
@@ -32,7 +32,7 @@ export function Hero({ slides = [] }: HeroProps) {
     "Handcrafted elegance. Curated styles. Make your special moments unforgettable.";
   const ctaLabel = currentSlide?.cta_label ?? "Explore Collections";
   const ctaHref = currentSlide?.cta_href ?? "/collections";
-  const sideText = currentSlide?.side_text ?? "The Art of Dressing Your Moments";
+  const sideText = currentSlide?.side_text ?? "The Art\nof Dressing\nYour\nMoments";
 
   const totalSlides = Math.max(activeSlides.length, 1);
   const slideNumberFormatted = String(currentSlideIndex + 1).padStart(2, "0");
@@ -49,145 +49,135 @@ export function Hero({ slides = [] }: HeroProps) {
   };
 
   return (
-    <section className="relative bg-[#FAF6F0] overflow-hidden border-b border-[#E8DDD1]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-12 lg:pt-14 lg:pb-16">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+    <section className="relative bg-[#FAF6F0] overflow-hidden min-h-[660px] lg:min-h-[720px] flex items-center border-b border-[#E8DDD1]">
+      {/* 1. Full-Height Panoramic Background Photo on Right */}
+      {currentSlide?.image_url && (
+        <div className="absolute top-0 right-0 bottom-0 w-full lg:w-[62%] h-full z-0 overflow-hidden">
+          <Image
+            src={currentSlide.image_url}
+            alt={currentSlide.image_alt || heading}
+            fill
+            priority
+            className="object-cover object-top lg:object-center transition-opacity duration-700"
+            sizes="(max-width: 1024px) 100vw, 65vw"
+          />
+
+          {/* Left-to-right seamless blending gradient into #FAF6F0 */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#FAF6F0] via-[#FAF6F0]/70 via-35% to-transparent hidden lg:block" />
           
-          {/* Left Text Block */}
-          <div className="lg:col-span-6 flex flex-col justify-center order-2 lg:order-1">
-            {/* Eyebrow */}
-            <div className="inline-flex items-center gap-2 mb-3">
-              <span className="w-5 h-[1px] bg-[#B06F5E]" />
-              <span className="text-[11px] sm:text-xs font-semibold tracking-[0.25em] text-[#B06F5E] uppercase font-sans">
-                {eyebrow}
-              </span>
-            </div>
+          {/* Mobile vertical gradient overlay for legibility */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#FAF6F0] via-[#FAF6F0]/85 to-transparent lg:hidden" />
+        </div>
+      )}
 
-            {/* Main Editorial Heading */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-serif text-[#2B211C] tracking-tight leading-[1.1] mb-5 font-normal">
-              {heading}
-            </h1>
+      {/* 2. Floating Editorial Quote on the Far Right (Exact Reference 02) */}
+      <div className="hidden lg:flex absolute top-14 right-16 z-20 flex-col items-center text-center pointer-events-none">
+        <div className="w-[1px] h-8 bg-[#B06F5E] mb-3 relative">
+          <div className="w-1.5 h-1.5 rounded-full bg-[#B06F5E] absolute -top-1 -left-[2px]" />
+        </div>
+        <p className="font-serif italic text-sm text-[#2B211C] leading-snug whitespace-pre-line tracking-wide">
+          {sideText}
+        </p>
+      </div>
 
-            {/* Supporting Text */}
-            <p className="text-sm sm:text-base text-[#7A6A5F] max-w-lg leading-relaxed font-sans font-light mb-8">
-              {body}
-            </p>
+      {/* 3. Carousel Navigation at Bottom Right (01 / 03 and 2 Round White Buttons) */}
+      <div className="absolute bottom-8 right-6 sm:right-12 lg:right-16 z-20 flex items-center gap-5">
+        <span className="text-xs sm:text-sm font-serif text-[#7A6A5F] tracking-widest">
+          {slideNumberFormatted} / {totalSlidesFormatted}
+        </span>
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={handlePrev}
+            disabled={activeSlides.length <= 1}
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/95 hover:bg-white text-[#2B211C] shadow-md hover:shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+            aria-label="Previous slide"
+          >
+            <ChevronLeft className="w-4 h-4 stroke-[2]" />
+          </button>
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={activeSlides.length <= 1}
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/95 hover:bg-white text-[#2B211C] shadow-md hover:shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+            aria-label="Next slide"
+          >
+            <ChevronRight className="w-4 h-4 stroke-[2]" />
+          </button>
+        </div>
+      </div>
 
-            {/* CTA Button */}
-            <div className="mb-10 sm:mb-12">
-              <Link
-                href={ctaHref}
-                className="inline-flex items-center gap-3 px-7 py-3.5 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-xs sm:text-sm font-medium tracking-wide rounded-sm shadow-sm transition-all hover:gap-4 group focus:outline-none"
-              >
-                <span>{ctaLabel}</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-              </Link>
-            </div>
+      {/* 4. Left Content Area */}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24 w-full">
+        <div className="max-w-xl lg:max-w-xl">
+          {/* Eyebrow */}
+          <span className="block text-[11px] sm:text-xs font-semibold tracking-[0.28em] text-[#B06F5E] uppercase font-sans mb-3 sm:mb-4">
+            {eyebrow}
+          </span>
 
-            {/* Supporting 4 Service Highlights beneath the main message */}
-            <div className="pt-6 border-t border-[#E8DDD1] grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-[#F4ECE1] flex items-center justify-center shrink-0 text-[#B06F5E]">
-                  <Sparkles className="w-3.5 h-3.5" />
-                </div>
-                <span className="text-xs text-[#2B211C] font-medium leading-tight">
+          {/* Main Editorial Heading (Line breaks matching reference: Grace / for Every / Occasion) */}
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-[80px] font-serif text-[#2B211C] tracking-tight leading-[1.0] font-normal mb-5 sm:mb-6">
+            Grace <br />
+            for Every <br />
+            Occasion
+          </h1>
+
+          {/* Supporting Copy */}
+          <p className="text-xs sm:text-sm text-[#7A6A5F] max-w-md font-light leading-relaxed font-sans mb-8 sm:mb-10">
+            Handcrafted elegance. Curated styles. <br className="hidden sm:inline" />
+            Make your special moments unforgettable.
+          </p>
+
+          {/* CTA Button */}
+          <div className="mb-14 sm:mb-16">
+            <Link
+              href={ctaHref}
+              className="inline-flex items-center gap-2.5 px-8 py-3.5 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-xs sm:text-sm font-medium tracking-wide rounded-sm shadow-sm transition-all hover:gap-3.5 group focus:outline-none"
+            >
+              <span>{ctaLabel}</span>
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+
+          {/* 4 Core Features with Minimalist Outline Icons (Matching Reference 02 Bottom Left) */}
+          <div className="flex items-center gap-5 sm:gap-7 pt-4">
+            {/* Leading subtle horizontal dash */}
+            <span className="w-6 h-[1.5px] bg-[#B06F5E]/60 shrink-0 hidden sm:inline-block" />
+
+            <div className="grid grid-cols-4 gap-4 sm:gap-6 flex-1 max-w-md">
+              {/* Feature 1: Premium Collection */}
+              <div className="flex flex-col items-center sm:items-start text-center sm:text-left gap-1.5">
+                <Shield className="w-4 h-4 text-[#2B211C] stroke-[1.4]" />
+                <span className="text-[10px] sm:text-[11px] font-medium text-[#2B211C] leading-tight">
                   Premium Collection
                 </span>
               </div>
 
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-[#F4ECE1] flex items-center justify-center shrink-0 text-[#B06F5E]">
-                  <Scissors className="w-3.5 h-3.5" />
-                </div>
-                <span className="text-xs text-[#2B211C] font-medium leading-tight">
+              {/* Feature 2: Personal Styling */}
+              <div className="flex flex-col items-center sm:items-start text-center sm:text-left gap-1.5">
+                <Scissors className="w-4 h-4 text-[#2B211C] stroke-[1.4]" />
+                <span className="text-[10px] sm:text-[11px] font-medium text-[#2B211C] leading-tight">
                   Personal Styling
                 </span>
               </div>
 
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-[#F4ECE1] flex items-center justify-center shrink-0 text-[#B06F5E]">
-                  <Tag className="w-3.5 h-3.5" />
-                </div>
-                <span className="text-xs text-[#2B211C] font-medium leading-tight">
+              {/* Feature 3: Affordable Rental */}
+              <div className="flex flex-col items-center sm:items-start text-center sm:text-left gap-1.5">
+                <Tag className="w-4 h-4 text-[#2B211C] stroke-[1.4]" />
+                <span className="text-[10px] sm:text-[11px] font-medium text-[#2B211C] leading-tight">
                   Affordable Rental
                 </span>
               </div>
 
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-[#F4ECE1] flex items-center justify-center shrink-0 text-[#B06F5E]">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                </div>
-                <span className="text-xs text-[#2B211C] font-medium leading-tight">
+              {/* Feature 4: Hassle Free Process */}
+              <div className="flex flex-col items-center sm:items-start text-center sm:text-left gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-[#2B211C] stroke-[1.4]" />
+                <span className="text-[10px] sm:text-[11px] font-medium text-[#2B211C] leading-tight">
                   Hassle Free Process
                 </span>
               </div>
             </div>
           </div>
-
-          {/* Right Hero Image Block with Side Text & Restrained Carousel Controls */}
-          <div className="lg:col-span-6 relative order-1 lg:order-2">
-            <div className="relative aspect-[4/5] sm:aspect-[5/6] lg:aspect-[4/5] w-full rounded-sm overflow-hidden bg-[#F4ECE1] border border-[#E8DDD1] shadow-sm">
-              {currentSlide?.image_url ? (
-                <Image
-                  src={currentSlide.image_url}
-                  alt={currentSlide.image_alt || heading}
-                  fill
-                  priority
-                  className="object-cover object-center transition-all duration-700"
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                />
-              ) : (
-                /* Intentional neutral luxury cream fallback matching reference layout */
-                <div className="absolute inset-0 bg-gradient-to-br from-[#F4ECE1] via-[#FAF6F0] to-[#E8DDD1] flex flex-col items-center justify-center p-8 text-center">
-                  <div className="w-16 h-16 rounded-full border border-[#D4C3B2] flex items-center justify-center mb-4 text-[#B06F5E]/70">
-                    <Sparkles className="w-6 h-6 stroke-[1.5]" />
-                  </div>
-                  <h3 className="font-serif text-2xl text-[#2B211C] mb-2 font-normal">
-                    Curated Bridal Elegance
-                  </h3>
-                  <p className="text-xs text-[#7A6A5F] max-w-xs font-sans">
-                    Discover handcrafted designer lehengas, sarees, and couture gowns for your unforgettable celebration.
-                  </p>
-                </div>
-              )}
-
-              {/* Floating side editorial phrase: "The Art of Dressing Your Moments" */}
-              <div className="hidden sm:flex absolute top-8 right-6 items-center gap-3 bg-[#FAF6F0]/85 backdrop-blur-sm py-2 px-3.5 rounded-sm border border-[#E8DDD1]/80 shadow-xs">
-                <span className="w-[1.5px] h-6 bg-[#B06F5E]" />
-                <span className="text-[11px] font-serif text-[#2B211C] tracking-wide leading-tight">
-                  {sideText}
-                </span>
-              </div>
-
-              {/* Carousel indicator controls on bottom right matching reference: # 01 / 03 */}
-              <div className="absolute bottom-5 right-5 flex items-center gap-3 bg-[#FAF6F0]/90 backdrop-blur-sm px-4 py-2 rounded-sm border border-[#E8DDD1] shadow-xs">
-                <span className="text-[11px] font-sans font-medium text-[#7A6A5F] tracking-wider">
-                  # {slideNumberFormatted} / {totalSlidesFormatted}
-                </span>
-                <div className="flex items-center gap-1 border-l border-[#E8DDD1] pl-2 ml-1">
-                  <button
-                    type="button"
-                    onClick={handlePrev}
-                    disabled={activeSlides.length <= 1}
-                    className="p-1 rounded text-[#2B211C] hover:text-[#B06F5E] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    aria-label="Previous slide"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleNext}
-                    disabled={activeSlides.length <= 1}
-                    className="p-1 rounded text-[#2B211C] hover:text-[#B06F5E] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    aria-label="Next slide"
-                  >
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
         </div>
       </div>
     </section>
