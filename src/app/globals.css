@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: var(--font-serif), Georgia, Cambria, serif;
+  --font-sans: var(--font-sans), system-ui, -apple-system, sans-serif;
+
+  --color-haya-bg: #FAF6F0;
+  --color-haya-surface: #FFFDF9;
+  --color-haya-subtle: #F4ECE1;
+  --color-haya-ink: #2B211C;
+  --color-haya-muted: #7A6A5F;
+  --color-haya-line: #E8DDD1;
+  --color-haya-line-dark: #D4C3B2;
+  --color-haya-accent: #B06F5E;
+  --color-haya-accent-hover: #975D4E;
+  --color-haya-accent-light: #F6EDE9;
+  --color-haya-gold: #C2A578;
+}
+
+:root {
+  --background: #FAF6F0;
+  --foreground: #2B211C;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Editorial typography utilities */
+h1, h2, h3, h4, .font-editorial {
+  font-family: var(--font-serif);
+  letter-spacing: -0.01em;
+}
+
+/* Custom scrollbar for gallery and drawers */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #FAF6F0;
+}
+::-webkit-scrollbar-thumb {
+  background: #D4C3B2;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B06F5E;
+}
