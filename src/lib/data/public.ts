@@ -14,7 +14,7 @@ import type {
 } from "@/lib/types";
 
 export const DEFAULT_SETTINGS: SiteSettings = {
-  brand: { site_name: "Haya", tagline: "Premium Bridal Rental", logo_url: null, logo_public_id: null, logo_light_url: null, logo_light_public_id: null },
+  brand: { site_name: "Haya", tagline: "Premium Bridal Rental", logo_url: "/haya-logo-transparent.png", logo_public_id: null, logo_light_url: "/haya-logo-transparent.png", logo_light_public_id: null },
   contact: { email: null, phone: null, whatsapp: null, address: null, hours: null, map_url: null },
   social: { instagram: null, facebook: null, pinterest: null, youtube: null },
   home: {

@@ -20,6 +20,10 @@ export const metadata: Metadata = {
   title: "Haya — Premium Bridal Rental | Grace for Every Occasion",
   description:
     "Handcrafted elegance. Curated styles. Luxury bridal wear, couture lehengas, and occasion wear for rent. Make your special moments unforgettable.",
+  icons: {
+    icon: "/haya-logo-transparent.png",
+    apple: "/haya-logo-transparent.png",
+  },
 };
 
 export default function RootLayout({
