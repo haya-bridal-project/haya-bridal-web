@@ -115,6 +115,14 @@ export function ProductBookingWidget({ product }: ProductBookingWidgetProps) {
   };
 
   const handleProceedBooking = () => {
+    if (!startDate) {
+      const dateEl = document.getElementById("rental-date");
+      if (dateEl) {
+        dateEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        dateEl.focus();
+        return;
+      }
+    }
     const query = new URLSearchParams({
       duration: String(selectedDuration),
       ...(selectedSize ? { size: selectedSize } : {}),

@@ -23,35 +23,35 @@ export function CollectionCards({ collections = [] }: CollectionCardsProps) {
   }
 
   return (
-    <section className="py-10 sm:py-14 bg-[#FAF6F0]">
+    <section className="py-6 sm:py-14 bg-[#FAF6F0]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Mobile View: Story pills matching Reference 03 */}
-        <div className="flex sm:hidden items-center justify-between gap-3 overflow-x-auto pb-4 no-scrollbar">
+        {/* Mobile View: Story pills matching Reference 03 with fluid momentum scrolling */}
+        <div className="flex sm:hidden items-center justify-start gap-4 overflow-x-auto pb-3 px-1 no-scrollbar scroll-smooth snap-x">
           {displayCollections.map((col) => (
             <Link
               key={col.id}
               href={`/collections/${col.slug}`}
-              className="flex flex-col items-center shrink-0 w-20 group"
+              className="flex flex-col items-center shrink-0 w-[74px] group snap-start"
             >
-              <div className="relative w-16 h-16 rounded-full overflow-hidden border border-[#D4C3B2] p-0.5 bg-[#FFFDF9] group-hover:border-[#B06F5E] transition-all">
-                <div className="relative w-full h-full rounded-full overflow-hidden bg-[#F4ECE1]">
+              <div className="relative w-[68px] h-[68px] rounded-full overflow-hidden p-[2px] bg-gradient-to-tr from-[#B06F5E]/60 via-[#E8DDD1] to-[#B06F5E]/30 group-hover:from-[#B06F5E] group-hover:to-[#B06F5E] transition-all shadow-xs">
+                <div className="relative w-full h-full rounded-full overflow-hidden bg-[#F4ECE1] border border-white">
                   {col.image_url ? (
                     <Image
                       src={col.image_url}
                       alt={col.image_alt || col.name}
                       fill
-                      className="object-cover"
-                      sizes="64px"
+                      className="object-cover group-hover:scale-110 transition-transform duration-500"
+                      sizes="68px"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-[10px] font-serif text-[#7A6A5F]">
+                    <div className="w-full h-full flex items-center justify-center text-[11px] font-serif font-medium text-[#7A6A5F]">
                       {col.name.slice(0, 2)}
                     </div>
                   )}
                 </div>
               </div>
-              <span className="mt-2 text-[11px] font-medium text-[#2B211C] text-center line-clamp-1 group-hover:text-[#B06F5E]">
+              <span className="mt-2 text-[11px] font-medium text-[#2B211C] text-center line-clamp-1 group-hover:text-[#B06F5E] tracking-tight">
                 {col.name}
               </span>
             </Link>

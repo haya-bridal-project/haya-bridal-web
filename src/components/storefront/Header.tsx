@@ -57,16 +57,16 @@ export function Header({
   return (
     <header className="sticky top-0 z-40 bg-[#FAF6F0]/95 backdrop-blur-md border-b border-[#E8DDD1] transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Mobile menu trigger */}
           <div className="flex items-center lg:hidden">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="p-2 text-[#2B211C] hover:text-[#B06F5E] focus:outline-none"
+              className="p-1.5 text-[#2B211C] hover:text-[#B06F5E] focus:outline-none"
               aria-label="Open menu"
             >
-              <Menu className="w-6 h-6 stroke-[1.5]" />
+              <Menu className="w-5 h-5 sm:w-6 sm:h-6 stroke-[1.5]" />
             </button>
           </div>
 
@@ -100,7 +100,7 @@ export function Header({
           </nav>
 
           {/* Right Action Controls */}
-          <div className="flex items-center space-x-3 sm:space-x-4">
+          <div className="flex items-center space-x-1 sm:space-x-3">
             {/* Desktop Outfit Search Bar matching reference */}
             <form
               onSubmit={handleSearchSubmit}
@@ -129,7 +129,7 @@ export function Header({
                 setSearchOpen(!searchOpen);
                 setTimeout(() => searchInputRef.current?.focus(), 100);
               }}
-              className="md:hidden p-2 text-[#2B211C] hover:text-[#B06F5E]"
+              className="md:hidden p-1.5 text-[#2B211C] hover:text-[#B06F5E]"
               aria-label="Search outfits"
             >
               <Search className="w-5 h-5 stroke-[1.5]" />
@@ -138,12 +138,12 @@ export function Header({
             {/* Wishlist */}
             <Link
               href="/account/wishlist"
-              className="p-2 text-[#2B211C] hover:text-[#B06F5E] relative transition-colors"
+              className="p-1.5 text-[#2B211C] hover:text-[#B06F5E] relative transition-colors"
               aria-label="Wishlist"
             >
               <Heart className="w-5 h-5 stroke-[1.5]" />
               {wishlistCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-[#B06F5E] text-white text-[10px] font-semibold rounded-full flex items-center justify-center">
+                <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-[#B06F5E] text-white text-[9px] font-semibold rounded-full flex items-center justify-center">
                   {wishlistCount}
                 </span>
               )}
@@ -152,7 +152,7 @@ export function Header({
             {/* Account */}
             <Link
               href={userEmail ? "/account" : "/login"}
-              className="p-2 text-[#2B211C] hover:text-[#B06F5E] transition-colors"
+              className="p-1.5 text-[#2B211C] hover:text-[#B06F5E] transition-colors"
               aria-label={userEmail ? "My Account" : "Sign In"}
               title={userEmail ? `Signed in as ${userEmail}` : "Sign In"}
             >
@@ -162,7 +162,7 @@ export function Header({
             {/* Bag / Bookings */}
             <Link
               href="/account/bookings"
-              className="p-2 text-[#2B211C] hover:text-[#B06F5E] transition-colors relative"
+              className="p-1.5 text-[#2B211C] hover:text-[#B06F5E] transition-colors relative"
               aria-label="My Bookings"
             >
               <ShoppingBag className="w-5 h-5 stroke-[1.5]" />

@@ -54,7 +54,7 @@ export default async function ProductDetailPage(props: ProductPageProps) {
         userEmail={user?.email}
       />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 w-full">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 w-full pb-28 sm:pb-12">
         {/* Breadcrumbs matching Reference 05 */}
         <nav className="flex items-center space-x-2 text-xs text-[#7A6A5F] mb-8 font-sans overflow-x-auto whitespace-nowrap">
           <Link href="/" className="hover:text-[#2B211C] transition-colors">

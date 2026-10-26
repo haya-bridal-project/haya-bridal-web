@@ -80,10 +80,10 @@ export function ProductCard({
           type="button"
           onClick={handleWishlistClick}
           aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center text-[#2B211C] hover:text-[#B06F5E] shadow-xs transition-colors z-10"
+          className="absolute top-2 right-2 sm:top-3 sm:right-3 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center text-[#2B211C] hover:text-[#B06F5E] shadow-xs transition-colors z-10"
         >
           <Heart
-            className={`w-4 h-4 transition-colors ${
+            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors ${
               wishlisted ? "fill-[#B06F5E] text-[#B06F5E]" : "stroke-[1.6]"
             }`}
           />
@@ -91,44 +91,44 @@ export function ProductCard({
 
         {/* Featured Tag */}
         {product.is_featured && (
-          <div className="absolute top-3 left-3 bg-[#FAF6F0]/90 backdrop-blur-xs px-2.5 py-0.5 rounded-sm border border-[#E8DDD1] text-[10px] font-sans font-medium uppercase tracking-wider text-[#2B211C]">
+          <div className="absolute top-2 left-2 sm:top-3 left-3 bg-[#FAF6F0]/90 backdrop-blur-xs px-2 py-0.5 rounded-sm border border-[#E8DDD1] text-[9px] sm:text-[10px] font-sans font-medium uppercase tracking-wider text-[#2B211C]">
             Featured
           </div>
         )}
       </Link>
 
       {/* Product Details Block */}
-      <div className="p-4 flex flex-col flex-1 justify-between">
+      <div className="p-2.5 sm:p-4 flex flex-col flex-1 justify-between">
         <div>
           {/* Subtitle / Collection Tag */}
-          <p className="text-[11px] font-sans text-[#7A6A5F] tracking-wide uppercase mb-1">
+          <p className="text-[9px] sm:text-[11px] font-sans text-[#7A6A5F] tracking-wide uppercase mb-0.5 sm:mb-1 line-clamp-1">
             {product.collection?.name || "Bridal Rental"}
           </p>
 
           {/* Product Name */}
           <Link
             href={`/products/${product.slug}`}
-            className="font-serif text-base text-[#2B211C] font-normal tracking-tight line-clamp-1 hover:text-[#B06F5E] transition-colors"
+            className="font-serif text-xs sm:text-base text-[#2B211C] font-normal tracking-tight line-clamp-1 hover:text-[#B06F5E] transition-colors"
           >
             {product.name}
           </Link>
 
           {/* Price & Duration */}
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-sm font-semibold text-[#2B211C] font-sans">
+          <div className="mt-1 sm:mt-2 flex flex-col xs:flex-row xs:items-baseline xs:gap-1.5">
+            <span className="text-xs sm:text-sm font-semibold text-[#2B211C] font-sans">
               {formatINR(product.rental_price_paise)}
             </span>
-            <span className="text-xs text-[#7A6A5F] font-sans">
+            <span className="text-[10px] sm:text-xs text-[#7A6A5F] font-sans">
               / {product.rental_duration_days} Days
             </span>
           </div>
         </div>
 
         {/* View Details Action Button matching Reference 04 */}
-        <div className="mt-4 pt-3 border-t border-[#E8DDD1]/60">
+        <div className="mt-2 sm:mt-4 pt-2 sm:pt-3 border-t border-[#E8DDD1]/60">
           <Link
             href={`/products/${product.slug}`}
-            className="w-full inline-flex items-center justify-center py-2 px-4 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-xs font-medium tracking-wide rounded-sm transition-colors text-center shadow-xs"
+            className="w-full inline-flex items-center justify-center py-1.5 sm:py-2 px-2 sm:px-4 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-[10px] sm:text-xs font-medium tracking-wider uppercase rounded-sm transition-colors text-center shadow-xs"
           >
             View Details
           </Link>
