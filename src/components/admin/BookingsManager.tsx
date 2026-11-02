@@ -114,69 +114,43 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
         </div>
       </div>
 
-      {/* Search Input */}
-      <div className="flex items-center max-w-md bg-white border border-[#E8DDD1] rounded-sm px-3 py-2 shadow-xs">
-        <Search className="w-4 h-4 text-[#7A6A5F] mr-2" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Filter by ref code, bride name, phone, or outfit..."
-          className="w-full text-xs text-[#2B211C] focus:outline-none"
-        />
+      {/* Search & Filter Bar */}
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+        <div className="flex items-center flex-1 max-w-md bg-white border border-[#E8DDD1] rounded-sm px-3 py-2 shadow-xs">
+          <Search className="w-4 h-4 text-[#7A6A5F] mr-2 shrink-0" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Filter by ref code, bride name, phone, or outfit..."
+            className="w-full text-xs text-[#2B211C] focus:outline-none"
+          />
+        </div>
+
+        <div className="text-xs text-[#7A6A5F]">
+          Showing <strong className="text-[#2B211C]">{filteredBookings.length}</strong> reservations
+        </div>
       </div>
 
-      {/* Bookings Table */}
+      {/* Bookings Table & Mobile Cards */}
       <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm shadow-xs overflow-hidden">
         {filteredBookings.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#FAF6F0] text-[#7A6A5F] uppercase tracking-wider font-sans border-b border-[#E8DDD1]">
-                <tr>
-                  <th className="py-3 px-4">Reference</th>
-                  <th className="py-3 px-4">Client Contact</th>
-                  <th className="py-3 px-4">Outfit &amp; Size</th>
-                  <th className="py-3 px-4">Rental Window</th>
-                  <th className="py-3 px-4">Payable</th>
-                  <th className="py-3 px-4">Payment</th>
-                  <th className="py-3 px-4">Booking Status</th>
-                  <th className="py-3 px-4 text-right">Details</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E8DDD1] text-[#2B211C]">
-                {filteredBookings.map((b) => (
-                  <tr
-                    key={b.id}
-                    onClick={() => setSelectedBooking(b)}
-                    className="hover:bg-[#FAF6F0]/70 cursor-pointer transition-colors"
-                  >
-                    <td className="py-3 px-4 font-mono font-medium text-[#B06F5E]">
+          <>
+            {/* Mobile Card List (screens < md) */}
+            <div className="md:hidden divide-y divide-[#E8DDD1]">
+              {filteredBookings.map((b) => (
+                <div
+                  key={b.id}
+                  onClick={() => setSelectedBooking(b)}
+                  className="p-4 space-y-3 hover:bg-[#FAF6F0]/60 active:bg-[#FAF6F0] transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-semibold text-[#B06F5E] text-xs">
                       {b.reference}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="font-medium block">{b.customer_name}</span>
-                      <span className="text-[11px] text-[#7A6A5F]">{b.customer_phone}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="font-serif text-sm block">{b.product_name}</span>
-                      <span className="text-[11px] text-[#7A6A5F]">
-                        Size: {b.size || "Standard"} {b.color ? `• ${b.color}` : ""}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="font-medium block">
-                        {formatDate(b.start_date)} to {formatDate(b.end_date)}
-                      </span>
-                      <span className="text-[11px] text-[#7A6A5F]">
-                        {b.duration_days} Days ({b.buffer_days}d buffer)
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-sans font-semibold">
-                      {formatINR(b.total_paise)}
-                    </td>
-                    <td className="py-3 px-4">
+                    </span>
+                    <div className="flex items-center gap-1.5">
                       <span
-                        className={`px-2 py-0.5 rounded-xs text-[10px] font-semibold uppercase tracking-wider ${
+                        className={`px-1.5 py-0.5 rounded-xs text-[9px] font-semibold uppercase tracking-wider ${
                           b.payment_status === "paid"
                             ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                             : "bg-amber-50 text-amber-800 border border-amber-200"
@@ -184,26 +158,126 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
                       >
                         {PAYMENT_STATUS_LABEL[b.payment_status] || b.payment_status}
                       </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-0.5 rounded-xs bg-[#F4ECE1] text-[11px] font-medium text-[#2B211C]">
+                      <span className="px-1.5 py-0.5 rounded-xs bg-[#F4ECE1] text-[10px] font-medium text-[#2B211C]">
                         {BOOKING_STATUS_LABEL[b.status] || b.status}
                       </span>
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedBooking(b)}
-                        className="text-[#B06F5E] hover:underline font-medium"
-                      >
-                        Manage
-                      </button>
-                    </td>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-serif text-sm font-medium text-[#2B211C]">
+                      {b.product_name}
+                    </h3>
+                    <p className="text-[11px] text-[#7A6A5F] mt-0.5">
+                      Client: <span className="font-medium text-[#2B211C]">{b.customer_name}</span> • {b.customer_phone}
+                    </p>
+                    <p className="text-[11px] text-[#7A6A5F]">
+                      Size: {b.size || "Standard"} {b.color ? `• ${b.color}` : ""}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-[#E8DDD1]/60 text-xs">
+                    <span className="text-[11px] text-[#7A6A5F]">
+                      {formatDate(b.start_date)} &rarr; {formatDate(b.end_date)} ({b.duration_days}d)
+                    </span>
+                    <span className="font-sans font-semibold text-[#2B211C]">
+                      {formatINR(b.total_paise)}
+                    </span>
+                  </div>
+
+                  <div className="pt-1 flex items-center justify-end">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedBooking(b);
+                      }}
+                      className="px-3 py-1 bg-[#FAF6F0] hover:bg-[#F4ECE1] text-[#B06F5E] border border-[#E8DDD1] rounded-xs font-medium text-xs transition-colors"
+                    >
+                      Manage Reservation &rarr;
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View (screens >= md) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#FAF6F0] text-[#7A6A5F] uppercase tracking-wider font-sans border-b border-[#E8DDD1]">
+                  <tr>
+                    <th className="py-3 px-4">Reference</th>
+                    <th className="py-3 px-4">Client Contact</th>
+                    <th className="py-3 px-4">Outfit &amp; Size</th>
+                    <th className="py-3 px-4">Rental Window</th>
+                    <th className="py-3 px-4">Payable</th>
+                    <th className="py-3 px-4">Payment</th>
+                    <th className="py-3 px-4">Booking Status</th>
+                    <th className="py-3 px-4 text-right">Details</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-[#E8DDD1] text-[#2B211C]">
+                  {filteredBookings.map((b) => (
+                    <tr
+                      key={b.id}
+                      onClick={() => setSelectedBooking(b)}
+                      className="hover:bg-[#FAF6F0]/70 cursor-pointer transition-colors"
+                    >
+                      <td className="py-3 px-4 font-mono font-medium text-[#B06F5E]">
+                        {b.reference}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="font-medium block">{b.customer_name}</span>
+                        <span className="text-[11px] text-[#7A6A5F]">{b.customer_phone}</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="font-serif text-sm block">{b.product_name}</span>
+                        <span className="text-[11px] text-[#7A6A5F]">
+                          Size: {b.size || "Standard"} {b.color ? `• ${b.color}` : ""}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="font-medium block">
+                          {formatDate(b.start_date)} to {formatDate(b.end_date)}
+                        </span>
+                        <span className="text-[11px] text-[#7A6A5F]">
+                          {b.duration_days} Days ({b.buffer_days}d buffer)
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-sans font-semibold">
+                        {formatINR(b.total_paise)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`px-2 py-0.5 rounded-xs text-[10px] font-semibold uppercase tracking-wider ${
+                            b.payment_status === "paid"
+                              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                              : "bg-amber-50 text-amber-800 border border-amber-200"
+                          }`}
+                        >
+                          {PAYMENT_STATUS_LABEL[b.payment_status] || b.payment_status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 rounded-xs bg-[#F4ECE1] text-[11px] font-medium text-[#2B211C]">
+                          {BOOKING_STATUS_LABEL[b.status] || b.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBooking(b)}
+                          className="text-[#B06F5E] hover:underline font-medium"
+                        >
+                          Manage
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
           <div className="p-12 text-center text-xs text-[#7A6A5F]">
             No booking records match the filter criteria.

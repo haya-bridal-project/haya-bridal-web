@@ -47,6 +47,7 @@ export function ConsultationsManager({
   );
   const [adminNote, setAdminNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+  const [mobileView, setMobileView] = useState<"list" | "detail">("list");
 
   const filtered = consultations.filter((item) => {
     const matchesStatus =
@@ -163,7 +164,10 @@ export function ConsultationsManager({
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setStatusFilter(tab.id)}
+              onClick={() => {
+                setStatusFilter(tab.id);
+                setMobileView("list");
+              }}
               className={`px-3 py-1.5 text-xs font-medium rounded-sm transition-colors whitespace-nowrap ${
                 statusFilter === tab.id
                   ? "bg-[#2B211C] text-[#FAF6F0]"
@@ -179,7 +183,11 @@ export function ConsultationsManager({
       {/* Master Detail Split */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Appointments list */}
-        <div className="lg:col-span-5 bg-white border border-[#E8DDD1] rounded-sm shadow-xs overflow-hidden">
+        <div
+          className={`lg:col-span-5 bg-white border border-[#E8DDD1] rounded-sm shadow-xs overflow-hidden ${
+            mobileView === "detail" ? "hidden lg:block" : "block"
+          }`}
+        >
           <div className="p-3 bg-[#FAF6F0] border-b border-[#E8DDD1] text-[11px] font-medium uppercase tracking-wider text-[#7A6A5F]">
             Showing {filtered.length} Appointments
           </div>
@@ -198,6 +206,7 @@ export function ConsultationsManager({
                     onClick={() => {
                       setSelectedItem(item);
                       setAdminNote(item.admin_notes || "");
+                      setMobileView("detail");
                     }}
                     className={`w-full text-left p-4 transition-colors flex flex-col gap-1.5 ${
                       isSelected
@@ -255,7 +264,22 @@ export function ConsultationsManager({
         </div>
 
         {/* Detail view */}
-        <div className="lg:col-span-7 bg-white border border-[#E8DDD1] rounded-sm p-6 shadow-xs">
+        <div
+          className={`lg:col-span-7 bg-white border border-[#E8DDD1] rounded-sm p-4 sm:p-6 shadow-xs ${
+            mobileView === "list" ? "hidden lg:block" : "block"
+          }`}
+        >
+          {/* Mobile Back Button */}
+          <div className="lg:hidden mb-4 pb-3 border-b border-[#E8DDD1]">
+            <button
+              type="button"
+              onClick={() => setMobileView("list")}
+              className="inline-flex items-center gap-1.5 text-xs text-[#B06F5E] font-medium hover:underline"
+            >
+              &larr; Back to all appointments
+            </button>
+          </div>
+
           {selectedItem ? (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-4 border-b border-[#E8DDD1]">

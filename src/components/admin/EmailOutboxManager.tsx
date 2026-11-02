@@ -179,68 +179,51 @@ export function EmailOutboxManager({ initialLogs = [] }: EmailOutboxManagerProps
         </div>
       </div>
 
-      {/* Outbox Table */}
-      <div className="bg-white border border-[#E8DDD1] rounded-sm shadow-xs overflow-x-auto">
-        <table className="w-full text-left border-collapse text-xs">
-          <thead>
-            <tr className="bg-[#FAF6F0] border-b border-[#E8DDD1] text-[10px] font-semibold uppercase tracking-wider text-[#7A6A5F]">
-              <th className="py-3 px-4">Event &amp; Subject</th>
-              <th className="py-3 px-4">Recipient</th>
-              <th className="py-3 px-4">Status</th>
-              <th className="py-3 px-4">Attempts</th>
-              <th className="py-3 px-4">Date</th>
-              <th className="py-3 px-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#E8DDD1]">
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="py-12 text-center text-xs text-[#7A6A5F]">
-                  No email logs found.
-                </td>
-              </tr>
-            ) : (
-              filtered.map((item) => (
-                <tr key={item.id} className="hover:bg-[#FFFDF9] transition-colors">
-                  <td className="py-3.5 px-4 max-w-xs">
-                    <span className="text-[10px] uppercase font-mono text-[#B06F5E] block truncate">
+      {/* Outbox Table & Mobile Cards */}
+      <div className="bg-white border border-[#E8DDD1] rounded-sm shadow-xs overflow-hidden">
+        {filtered.length === 0 ? (
+          <div className="py-12 text-center text-xs text-[#7A6A5F]">
+            No email logs found.
+          </div>
+        ) : (
+          <>
+            {/* Mobile Cards (screens < md) */}
+            <div className="md:hidden divide-y divide-[#E8DDD1]">
+              {filtered.map((item) => (
+                <div key={item.id} className="p-4 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] uppercase font-mono text-[#B06F5E] truncate">
                       {item.event_type}
                     </span>
-                    <span className="font-medium text-[#2B211C] block truncate">
-                      {item.subject}
-                    </span>
-                    {item.error && (
-                      <span className="text-[10px] text-red-600 block truncate mt-0.5" title={item.error}>
-                        Err: {item.error}
-                      </span>
-                    )}
-                  </td>
-
-                  <td className="py-3.5 px-4 font-mono text-xs text-[#7A6A5F]">
-                    {item.to_email}
-                  </td>
-
-                  <td className="py-3.5 px-4 whitespace-nowrap">
                     {getStatusBadge(item.status)}
-                  </td>
+                  </div>
 
-                  <td className="py-3.5 px-4 font-mono text-[#7A6A5F]">
-                    {item.attempts}
-                  </td>
+                  <div>
+                    <h4 className="font-serif text-sm font-medium text-[#2B211C]">
+                      {item.subject}
+                    </h4>
+                    <p className="font-mono text-[11px] text-[#7A6A5F] mt-0.5">
+                      To: {item.to_email}
+                    </p>
+                  </div>
 
-                  <td className="py-3.5 px-4 text-[#7A6A5F] whitespace-nowrap">
-                    {formatDate(item.created_at)}
-                  </td>
+                  {item.error && (
+                    <div className="p-2 bg-red-50 border border-red-200 text-red-700 text-[11px] rounded-xs">
+                      Error: {item.error}
+                    </div>
+                  )}
 
-                  <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                    <div className="flex items-center justify-end gap-2">
+                  <div className="flex items-center justify-between pt-2 border-t border-[#E8DDD1]/60 text-[11px] text-[#7A6A5F]">
+                    <span>{formatDate(item.created_at)} • {item.attempts} tries</span>
+
+                    <div className="flex items-center gap-2">
                       {item.payload?.html && (
                         <button
                           onClick={() => setPreviewItem(item)}
-                          className="p-1.5 text-[#7A6A5F] hover:text-[#2B211C] hover:bg-[#FAF6F0] rounded-xs"
-                          title="Preview Email HTML"
+                          className="px-2.5 py-1 text-xs text-[#2B211C] bg-[#FAF6F0] border border-[#E8DDD1] rounded-xs font-medium inline-flex items-center gap-1"
                         >
-                          <Eye className="w-3.5 h-3.5" />
+                          <Eye className="w-3 h-3" />
+                          <span>View</span>
                         </button>
                       )}
 
@@ -248,19 +231,95 @@ export function EmailOutboxManager({ initialLogs = [] }: EmailOutboxManagerProps
                         <button
                           onClick={() => handleRetry(item.id)}
                           disabled={retryingId === item.id}
-                          className="px-2.5 py-1 text-[11px] font-medium bg-[#B06F5E] hover:bg-[#975D4E] text-white rounded-xs inline-flex items-center gap-1 transition-colors disabled:opacity-50"
+                          className="px-2.5 py-1 text-xs font-medium bg-[#B06F5E] hover:bg-[#975D4E] text-white rounded-xs inline-flex items-center gap-1 disabled:opacity-50"
                         >
                           <RotateCcw className={`w-3 h-3 ${retryingId === item.id ? "animate-spin" : ""}`} />
                           <span>Retry</span>
                         </button>
                       )}
                     </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table (screens >= md) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-[#FAF6F0] border-b border-[#E8DDD1] text-[10px] font-semibold uppercase tracking-wider text-[#7A6A5F]">
+                    <th className="py-3 px-4">Event &amp; Subject</th>
+                    <th className="py-3 px-4">Recipient</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Attempts</th>
+                    <th className="py-3 px-4">Date</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E8DDD1]">
+                  {filtered.map((item) => (
+                    <tr key={item.id} className="hover:bg-[#FFFDF9] transition-colors">
+                      <td className="py-3.5 px-4 max-w-xs">
+                        <span className="text-[10px] uppercase font-mono text-[#B06F5E] block truncate">
+                          {item.event_type}
+                        </span>
+                        <span className="font-medium text-[#2B211C] block truncate">
+                          {item.subject}
+                        </span>
+                        {item.error && (
+                          <span className="text-[10px] text-red-600 block truncate mt-0.5" title={item.error}>
+                            Err: {item.error}
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-4 font-mono text-xs text-[#7A6A5F]">
+                        {item.to_email}
+                      </td>
+
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {getStatusBadge(item.status)}
+                      </td>
+
+                      <td className="py-3.5 px-4 font-mono text-[#7A6A5F]">
+                        {item.attempts}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-[#7A6A5F] whitespace-nowrap">
+                        {formatDate(item.created_at)}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2">
+                          {item.payload?.html && (
+                            <button
+                              onClick={() => setPreviewItem(item)}
+                              className="p-1.5 text-[#7A6A5F] hover:text-[#2B211C] hover:bg-[#FAF6F0] rounded-xs"
+                              title="Preview Email HTML"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          {(item.status === "failed" || item.status === "skipped") && (
+                            <button
+                              onClick={() => handleRetry(item.id)}
+                              disabled={retryingId === item.id}
+                              className="px-2.5 py-1 text-[11px] font-medium bg-[#B06F5E] hover:bg-[#975D4E] text-white rounded-xs inline-flex items-center gap-1 transition-colors disabled:opacity-50"
+                            >
+                              <RotateCcw className={`w-3 h-3 ${retryingId === item.id ? "animate-spin" : ""}`} />
+                              <span>Retry</span>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       {/* HTML Preview Modal */}

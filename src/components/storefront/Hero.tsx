@@ -35,7 +35,7 @@ export function Hero({ slides = [] }: HeroProps) {
   const sideText = currentSlide?.side_text ?? "The Art\nof Dressing\nYour\nMoments";
   const imageSrc = currentSlide?.image_url || "/hero-bride.png";
 
-  const totalSlides = Math.max(activeSlides.length, 3);
+  const totalSlides = Math.max(activeSlides.length, 1);
   const slideNumberFormatted = String(currentSlideIndex + 1).padStart(2, "0");
   const totalSlidesFormatted = String(totalSlides).padStart(2, "0");
 
@@ -49,15 +49,18 @@ export function Hero({ slides = [] }: HeroProps) {
     setCurrentSlideIndex((prev) => (prev === activeSlides.length - 1 ? 0 : prev + 1));
   };
 
+  const [imgSrc, setImgSrc] = useState(imageSrc);
+
   return (
     <section className="relative w-full bg-[#FAF6F0] overflow-hidden min-h-[560px] sm:min-h-[640px] lg:min-h-[700px] xl:min-h-[740px] flex flex-col justify-between border-b border-[#E8DDD1]">
       {/* 1. Full Panoramic Background Photo (Exact 2034x773 Master Photograph) */}
       <div className="absolute inset-0 z-0">
         <Image
-          src={imageSrc}
+          src={imgSrc}
           alt={currentSlide?.image_alt || heading}
           fill
           priority
+          onError={() => setImgSrc("/hero-bride.png")}
           className="object-cover object-[76%_center] sm:object-[68%_center] md:object-center transition-all duration-700"
           sizes="100vw"
         />
@@ -111,16 +114,13 @@ export function Hero({ slides = [] }: HeroProps) {
           </span>
 
           {/* Editorial Three-Line Title (fluid typography for mobile 360px up to 4K) */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl xl:text-[76px] font-serif text-[#2B211C] tracking-tight leading-[1.02] sm:leading-[0.98] font-normal mb-3 sm:mb-5">
-            Grace <br />
-            for Every <br />
-            Occasion
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl xl:text-[76px] font-serif text-[#2B211C] tracking-tight leading-[1.02] sm:leading-[0.98] font-normal mb-3 sm:mb-5 whitespace-pre-line">
+            {heading}
           </h1>
 
           {/* Subtitle */}
-          <p className="text-xs sm:text-sm text-[#5A4C42] max-w-xs sm:max-w-md font-light leading-relaxed font-sans mb-5 sm:mb-8">
-            Handcrafted elegance. Curated styles. <br className="hidden sm:inline" />
-            Make your special moments unforgettable.
+          <p className="text-xs sm:text-sm text-[#5A4C42] max-w-xs sm:max-w-md font-light leading-relaxed font-sans mb-5 sm:mb-8 whitespace-pre-line">
+            {body}
           </p>
 
           {/* CTA & Mobile Carousel Controls Row */}

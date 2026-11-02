@@ -8,6 +8,16 @@ export async function updateSession(request: NextRequest) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return response;
 
+  // Prune foreign Supabase project cookies lingering on localhost to prevent HTTP 431 header bloat
+  const currentRef = url.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1];
+  if (currentRef) {
+    for (const cookie of request.cookies.getAll()) {
+      if (cookie.name.startsWith("sb-") && !cookie.name.includes(currentRef)) {
+        response.cookies.delete(cookie.name);
+      }
+    }
+  }
+
   const supabase = createServerClient(url, key, {
     cookies: {
       getAll() {
@@ -21,8 +31,8 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  const { data } = await supabase.auth.getClaims();
-  const isAuthed = !!data?.claims?.sub;
+  const { data: { user } = { user: null } } = await supabase.auth.getUser();
+  const isAuthed = !!user;
   const path = request.nextUrl.pathname;
 
   const needsAuth =
@@ -35,7 +45,11 @@ export async function updateSession(request: NextRequest) {
     const redirect = request.nextUrl.clone();
     redirect.pathname = path.startsWith("/admin") ? "/admin/login" : "/login";
     redirect.search = `?next=${encodeURIComponent(path + request.nextUrl.search)}`;
-    return NextResponse.redirect(redirect);
+    const redirectResponse = NextResponse.redirect(redirect);
+    response.cookies.getAll().forEach((c) => {
+      redirectResponse.cookies.set(c.name, c.value, c);
+    });
+    return redirectResponse;
   }
 
   return response;
