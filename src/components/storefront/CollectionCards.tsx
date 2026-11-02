@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
@@ -8,6 +11,8 @@ interface CollectionCardsProps {
 }
 
 export function CollectionCards({ collections = [] }: CollectionCardsProps) {
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+
   // If no collections are in database yet, show clean empty state as per rule
   if (collections.length === 0) {
     return null;
@@ -36,11 +41,12 @@ export function CollectionCards({ collections = [] }: CollectionCardsProps) {
             >
               <div className="relative w-[68px] h-[68px] rounded-full overflow-hidden p-[2px] bg-gradient-to-tr from-[#B06F5E]/60 via-[#E8DDD1] to-[#B06F5E]/30 group-hover:from-[#B06F5E] group-hover:to-[#B06F5E] transition-all shadow-xs">
                 <div className="relative w-full h-full rounded-full overflow-hidden bg-[#F4ECE1] border border-white">
-                  {col.image_url ? (
+                  {col.image_url && !failedImages[col.id] ? (
                     <Image
                       src={col.image_url}
                       alt={col.image_alt || col.name}
                       fill
+                      onError={() => setFailedImages((prev) => ({ ...prev, [col.id]: true }))}
                       className="object-cover group-hover:scale-110 transition-transform duration-500"
                       sizes="68px"
                     />
@@ -60,56 +66,60 @@ export function CollectionCards({ collections = [] }: CollectionCardsProps) {
 
         {/* Desktop View: 4 Featured Collection Cards matching Reference 02 */}
         <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {displayCollections.map((col) => (
-            <Link
-              key={col.id}
-              href={`/collections/${col.slug}`}
-              className="group relative aspect-[4/3] rounded-sm overflow-hidden bg-[#F4ECE1] border border-[#E8DDD1] shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-end p-5"
-            >
-              {/* Background Image with Dark Vignette for Text Legibility */}
-              {col.image_url ? (
-                <>
-                  <Image
-                    src={col.image_url}
-                    alt={col.image_alt || col.name}
-                    fill
-                    className="object-cover object-center group-hover:scale-105 transition-transform duration-700"
-                    sizes="(max-width: 1024px) 50vw, 25vw"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent transition-opacity duration-300" />
-                </>
-              ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-[#F4ECE1] to-[#E8DDD1]" />
-              )}
+          {displayCollections.map((col) => {
+            const hasImg = !!col.image_url && !failedImages[col.id];
+            return (
+              <Link
+                key={col.id}
+                href={`/collections/${col.slug}`}
+                className="group relative aspect-[4/3] rounded-sm overflow-hidden bg-[#F4ECE1] border border-[#E8DDD1] shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-end p-5"
+              >
+                {/* Background Image with Dark Vignette for Text Legibility */}
+                {hasImg ? (
+                  <>
+                    <Image
+                      src={col.image_url!}
+                      alt={col.image_alt || col.name}
+                      fill
+                      onError={() => setFailedImages((prev) => ({ ...prev, [col.id]: true }))}
+                      className="object-cover object-center group-hover:scale-105 transition-transform duration-700"
+                      sizes="(max-width: 1024px) 50vw, 25vw"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent transition-opacity duration-300" />
+                  </>
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#F4ECE1] to-[#E8DDD1]" />
+                )}
 
-              {/* Card Content & Circular Arrow Target */}
-              <div className="relative z-10 flex items-end justify-between">
-                <div>
-                  <h3
-                    className={`font-serif text-lg lg:text-xl font-normal tracking-tight ${
-                      col.image_url ? "text-[#FFFDF9]" : "text-[#2B211C]"
-                    }`}
-                  >
-                    {col.name}
-                  </h3>
-                  {col.tagline && (
-                    <p
-                      className={`text-xs font-sans tracking-wide mt-0.5 line-clamp-1 ${
-                        col.image_url ? "text-[#FFFDF9]/80" : "text-[#7A6A5F]"
+                {/* Card Content & Circular Arrow Target */}
+                <div className="relative z-10 flex items-end justify-between">
+                  <div>
+                    <h3
+                      className={`font-serif text-lg lg:text-xl font-normal tracking-tight ${
+                        hasImg ? "text-[#FFFDF9]" : "text-[#2B211C]"
                       }`}
                     >
-                      {col.tagline}
-                    </p>
-                  )}
-                </div>
+                      {col.name}
+                    </h3>
+                    {col.tagline && (
+                      <p
+                        className={`text-xs font-sans tracking-wide mt-0.5 line-clamp-1 ${
+                          hasImg ? "text-[#FFFDF9]/80" : "text-[#7A6A5F]"
+                        }`}
+                      >
+                        {col.tagline}
+                      </p>
+                    )}
+                  </div>
 
-                {/* Circular hover action button matching reference */}
-                <div className="w-8 h-8 rounded-full bg-white/90 group-hover:bg-[#B06F5E] group-hover:text-white text-[#2B211C] flex items-center justify-center shrink-0 ml-3 transition-colors duration-300 shadow-xs">
-                  <ArrowUpRight className="w-4 h-4 stroke-[2]" />
+                  {/* Circular hover action button matching reference */}
+                  <div className="w-8 h-8 rounded-full bg-white/90 group-hover:bg-[#B06F5E] group-hover:text-white text-[#2B211C] flex items-center justify-center shrink-0 ml-3 transition-colors duration-300 shadow-xs">
+                    <ArrowUpRight className="w-4 h-4 stroke-[2]" />
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
 
       </div>

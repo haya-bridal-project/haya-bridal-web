@@ -53,6 +53,8 @@ export function ProductCard({
     }
   };
 
+  const [imgError, setImgError] = useState(false);
+
   return (
     <div className="group flex flex-col bg-[#FFFDF9] rounded-sm overflow-hidden border border-[#E8DDD1] shadow-xs hover:shadow-md transition-all duration-300">
       {/* Image Container (3:4 ratio) */}
@@ -60,11 +62,12 @@ export function ProductCard({
         href={`/products/${product.slug}`}
         className="relative aspect-[3/4] w-full overflow-hidden bg-[#F4ECE1] block"
       >
-        {primaryImage?.url ? (
+        {primaryImage?.url && !imgError ? (
           <Image
             src={primaryImage.url}
             alt={primaryImage.alt || product.name}
             fill
+            onError={() => setImgError(true)}
             className="object-cover object-center group-hover:scale-105 transition-transform duration-700"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
           />

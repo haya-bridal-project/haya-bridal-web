@@ -1,7 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { isConfigured } from "@/lib/env";
 
 export const getCurrentUser = cache(async () => {
@@ -22,7 +22,8 @@ export const getAdminContext = cache(async (): Promise<AdminContext | null> => {
   const user = await getCurrentUser();
   if (!user) return null;
   const supabase = await createClient();
-  const { data } = await supabase.from("admin_users").select("role").eq("user_id", user.id).maybeSingle();
+  const db = isConfigured.serviceRole() ? createServiceClient() : supabase;
+  const { data } = await db.from("admin_users").select("role").eq("user_id", user.id).maybeSingle();
   if (!data) return null;
   return { user, role: data.role as AdminContext["role"], supabase };
 });

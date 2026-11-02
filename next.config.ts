@@ -2,8 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    unoptimized: true,
     remotePatterns: [{ protocol: "https", hostname: "res.cloudinary.com" }],
-    qualities: [60, 75, 85],
   },
   poweredByHeader: false,
 };

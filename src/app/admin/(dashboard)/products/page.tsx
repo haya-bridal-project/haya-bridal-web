@@ -63,109 +63,190 @@ export default async function AdminProductsPage(props: AdminProductsPageProps) {
         </form>
       </div>
 
-      {/* Products Table */}
+      {/* Products Table & Mobile Cards */}
       <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm shadow-xs overflow-hidden">
         {products && products.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#FAF6F0] text-[#7A6A5F] uppercase tracking-wider font-sans border-b border-[#E8DDD1]">
-                <tr>
-                  <th className="py-3 px-4">Garment</th>
-                  <th className="py-3 px-4">Collection</th>
-                  <th className="py-3 px-4">Rental Rate</th>
-                  <th className="py-3 px-4">Deposit</th>
-                  <th className="py-3 px-4">Sizes</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E8DDD1] text-[#2B211C]">
-                {products.map((p: any) => {
-                  const primaryImg =
-                    p.product_images?.find((img: any) => img.is_primary) ||
-                    p.product_images?.[0];
+          <>
+            {/* Mobile Card List (screens < md) */}
+            <div className="md:hidden divide-y divide-[#E8DDD1]">
+              {products.map((p: any) => {
+                const primaryImg =
+                  p.product_images?.find((img: any) => img.is_primary) ||
+                  p.product_images?.[0];
 
-                  return (
-                    <tr key={p.id} className="hover:bg-[#FAF6F0]/60 transition-colors">
-                      <td className="py-3 px-4 flex items-center gap-3">
-                        <div className="relative aspect-[3/4] w-12 rounded-xs overflow-hidden bg-[#F4ECE1] border border-[#E8DDD1] shrink-0">
-                          {primaryImg?.url ? (
-                            <Image
-                              src={primaryImg.url}
-                              alt=""
-                              fill
-                              className="object-cover"
-                              sizes="48px"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[9px] text-[#7A6A5F]">
-                              Haya
-                            </div>
-                          )}
-                        </div>
-                        <div>
+                return (
+                  <div key={p.id} className="p-4 space-y-3">
+                    <div className="flex gap-3 items-start">
+                      <div className="relative aspect-[3/4] w-16 rounded-xs overflow-hidden bg-[#F4ECE1] border border-[#E8DDD1] shrink-0">
+                        {primaryImg?.url ? (
+                          <Image
+                            src={primaryImg.url}
+                            alt=""
+                            fill
+                            className="object-cover"
+                            sizes="64px"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[10px] text-[#7A6A5F]">
+                            Haya
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
                           <Link
                             href={`/admin/products/${p.id}`}
-                            className="font-serif text-sm font-medium hover:text-[#B06F5E] transition-colors block"
+                            className="font-serif text-sm font-medium text-[#2B211C] hover:text-[#B06F5E] transition-colors block truncate"
                           >
                             {p.name}
                           </Link>
-                          <span className="font-mono text-[10px] text-[#7A6A5F]">
-                            /{p.slug}
+                          <span
+                            className={`shrink-0 px-2 py-0.5 rounded-xs text-[10px] font-semibold uppercase tracking-wider ${
+                              p.is_published
+                                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                : "bg-stone-100 text-stone-700 border border-stone-200"
+                            }`}
+                          >
+                            {p.is_published ? "Live" : "Draft"}
                           </span>
                         </div>
-                      </td>
 
-                      <td className="py-3 px-4 text-[#7A6A5F]">
-                        {p.collection?.name || "Unassigned"}
-                      </td>
-
-                      <td className="py-3 px-4 font-sans font-medium">
-                        {formatINR(p.rental_price_paise)} / {p.rental_duration_days}D
-                      </td>
-
-                      <td className="py-3 px-4 font-sans text-[#7A6A5F]">
-                        {formatINR(p.deposit_paise)}
-                      </td>
-
-                      <td className="py-3 px-4">
-                        <span className="text-[11px] text-[#7A6A5F]">
-                          {p.sizes?.join(", ") || "Free Size"}
+                        <span className="text-[11px] text-[#7A6A5F] block mt-0.5">
+                          {p.collection?.name || "Unassigned Collection"}
                         </span>
-                      </td>
 
-                      <td className="py-3 px-4">
-                        <span
-                          className={`px-2 py-0.5 rounded-xs text-[10px] font-semibold uppercase tracking-wider ${
-                            p.is_published
-                              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                              : "bg-stone-100 text-stone-700 border border-stone-200"
-                          }`}
-                        >
-                          {p.is_published ? "Published" : "Draft"}
-                        </span>
-                        {p.is_featured && (
-                          <span className="ml-1 px-1.5 py-0.5 rounded-xs bg-[#FAF6F0] text-[#B06F5E] text-[10px] border border-[#E8DDD1]">
-                            Featured
+                        <div className="mt-2 flex items-baseline gap-2">
+                          <span className="font-sans font-semibold text-sm text-[#2B211C]">
+                            {formatINR(p.rental_price_paise)}
                           </span>
-                        )}
-                      </td>
+                          <span className="text-[10px] text-[#7A6A5F]">
+                            / {p.rental_duration_days}D (Dep: {formatINR(p.deposit_paise)})
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
-                      <td className="py-3 px-4 text-right">
-                        <Link
-                          href={`/admin/products/${p.id}`}
-                          className="inline-flex items-center gap-1 text-[#B06F5E] hover:underline font-medium"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                          <span>Edit</span>
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-[#E8DDD1]/60 text-xs">
+                      <span className="text-[11px] text-[#7A6A5F]">
+                        Sizes: {p.sizes?.join(", ") || "Free Size"}
+                      </span>
+
+                      <Link
+                        href={`/admin/products/${p.id}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF6F0] hover:bg-[#F4ECE1] text-[#B06F5E] border border-[#E8DDD1] rounded-xs font-medium text-xs transition-colors"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Edit Outfit</span>
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table View (screens >= md) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#FAF6F0] text-[#7A6A5F] uppercase tracking-wider font-sans border-b border-[#E8DDD1]">
+                  <tr>
+                    <th className="py-3 px-4">Garment</th>
+                    <th className="py-3 px-4">Collection</th>
+                    <th className="py-3 px-4">Rental Rate</th>
+                    <th className="py-3 px-4">Deposit</th>
+                    <th className="py-3 px-4">Sizes</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E8DDD1] text-[#2B211C]">
+                  {products.map((p: any) => {
+                    const primaryImg =
+                      p.product_images?.find((img: any) => img.is_primary) ||
+                      p.product_images?.[0];
+
+                    return (
+                      <tr key={p.id} className="hover:bg-[#FAF6F0]/60 transition-colors">
+                        <td className="py-3 px-4 flex items-center gap-3">
+                          <div className="relative aspect-[3/4] w-12 rounded-xs overflow-hidden bg-[#F4ECE1] border border-[#E8DDD1] shrink-0">
+                            {primaryImg?.url ? (
+                              <Image
+                                src={primaryImg.url}
+                                alt=""
+                                fill
+                                className="object-cover"
+                                sizes="48px"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-[9px] text-[#7A6A5F]">
+                                Haya
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <Link
+                              href={`/admin/products/${p.id}`}
+                              className="font-serif text-sm font-medium hover:text-[#B06F5E] transition-colors block"
+                            >
+                              {p.name}
+                            </Link>
+                            <span className="font-mono text-[10px] text-[#7A6A5F]">
+                              /{p.slug}
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="py-3 px-4 text-[#7A6A5F]">
+                          {p.collection?.name || "Unassigned"}
+                        </td>
+
+                        <td className="py-3 px-4 font-sans font-medium">
+                          {formatINR(p.rental_price_paise)} / {p.rental_duration_days}D
+                        </td>
+
+                        <td className="py-3 px-4 font-sans text-[#7A6A5F]">
+                          {formatINR(p.deposit_paise)}
+                        </td>
+
+                        <td className="py-3 px-4">
+                          <span className="text-[11px] text-[#7A6A5F]">
+                            {p.sizes?.join(", ") || "Free Size"}
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-4">
+                          <span
+                            className={`px-2 py-0.5 rounded-xs text-[10px] font-semibold uppercase tracking-wider ${
+                              p.is_published
+                                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                : "bg-stone-100 text-stone-700 border border-stone-200"
+                            }`}
+                          >
+                            {p.is_published ? "Published" : "Draft"}
+                          </span>
+                          {p.is_featured && (
+                            <span className="ml-1 px-1.5 py-0.5 rounded-xs bg-[#FAF6F0] text-[#B06F5E] text-[10px] border border-[#E8DDD1]">
+                              Featured
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3 px-4 text-right">
+                          <Link
+                            href={`/admin/products/${p.id}`}
+                            className="inline-flex items-center gap-1 text-[#B06F5E] hover:underline font-medium"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>Edit</span>
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
           <div className="p-12 text-center text-xs text-[#7A6A5F] space-y-3">
             <p>No outfits found in the bridal vault inventory.</p>

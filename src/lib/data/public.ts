@@ -106,7 +106,22 @@ export const getFeaturedProducts = cache(async (limit = 8): Promise<ProductWithI
     .order("sort_order")
     .limit(limit);
   classify(error);
-  return ((data as unknown as ProductWithImages[]) ?? []).map((p) => ({ ...p, product_images: sortImages(p.product_images) }));
+
+  let items = (data as unknown as ProductWithImages[]) ?? [];
+  if (items.length === 0) {
+    // If no products are marked as featured, fallback to latest published outfits
+    const { data: fallbackData, error: fallbackError } = await db
+      .from("products")
+      .select(PRODUCT_CARD_SELECT)
+      .eq("is_published", true)
+      .eq("is_archived", false)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    classify(fallbackError);
+    items = (fallbackData as unknown as ProductWithImages[]) ?? [];
+  }
+
+  return items.map((p) => ({ ...p, product_images: sortImages(p.product_images) }));
 });
 
 export type ListingQuery = {

@@ -219,7 +219,7 @@ export function CollectionsManager({
               />
             </div>
 
-            <div className="flex items-center gap-6 pt-5">
+            <div className="flex flex-wrap items-center gap-4 pt-2 sm:pt-5">
               <label className="flex items-center gap-2 text-xs cursor-pointer">
                 <input
                   type="checkbox"

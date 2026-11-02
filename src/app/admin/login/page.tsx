@@ -1,16 +1,17 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { HayaLogo } from "@/components/brand/HayaLogo";
 import { Lock, Mail, ArrowRight, AlertCircle, Shield } from "lucide-react";
 
 function AdminLoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const errorParam = searchParams.get("error");
+
+  const nextParam = searchParams.get("next");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,26 +39,47 @@ function AdminLoginForm() {
       }
 
       if (!data.user) {
-        throw new Error("Login failed");
+        throw new Error("Unable to authenticate user.");
       }
 
-      // Check admin status on server
-      const adminCheck = await fetch("/api/admin/check-auth");
-      const checkResult = await adminCheck.json();
+      // 1. Verify admin privilege directly from public.admin_users
+      let isAdmin = false;
 
-      if (!checkResult.isAdmin) {
-        // Sign out client if not admin
+      const { data: adminRecord, error: adminQueryErr } = await supabase
+        .from("admin_users")
+        .select("role")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+
+      if (adminRecord && !adminQueryErr) {
+        isAdmin = true;
+      } else {
+        // Fallback check against server API route if client query met an issue
+        try {
+          const res = await fetch("/api/admin/check-auth");
+          if (res.ok) {
+            const check = await res.json().catch(() => null);
+            if (check?.isAdmin) {
+              isAdmin = true;
+            }
+          }
+        } catch {
+          // Ignore network error on fallback
+        }
+      }
+
+      if (!isAdmin) {
         await supabase.auth.signOut();
         setErrorMsg("Access denied. This portal is restricted to authorized studio administrators.");
         setLoading(false);
         return;
       }
 
-      router.push("/admin");
-      router.refresh();
+      // Navigate with full browser redirect to ensure fresh cookies are passed to SSR layout
+      const target = nextParam && nextParam.startsWith("/admin") ? nextParam : "/admin";
+      window.location.href = target;
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Authentication error.");
-    } finally {
       setLoading(false);
     }
   };

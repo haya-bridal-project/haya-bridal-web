@@ -218,20 +218,20 @@ export function ProductForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8 max-w-5xl">
-      <div className="flex items-center justify-between pb-4 border-b border-[#E8DDD1]">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-[#E8DDD1] gap-4">
         <div className="flex items-center gap-3">
           <Link
             href="/admin/products"
-            className="p-1.5 rounded-xs border border-[#E8DDD1] text-[#7A6A5F] hover:text-[#2B211C] hover:bg-white"
+            className="p-1.5 rounded-xs border border-[#E8DDD1] text-[#7A6A5F] hover:text-[#2B211C] hover:bg-white shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <h1 className="font-serif text-2xl text-[#2B211C] font-normal">
+          <h1 className="font-serif text-xl sm:text-2xl text-[#2B211C] font-normal truncate">
             {isEditing ? `Edit: ${initialProduct.name}` : "Create New Bridal Outfit"}
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 self-end sm:self-auto w-full sm:w-auto justify-end">
           {isEditing && (
             <button
               type="button"
@@ -246,7 +246,7 @@ export function ProductForm({
           <button
             type="submit"
             disabled={loading}
-            className="px-5 py-2.5 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-xs font-medium uppercase tracking-wider rounded-sm shadow-xs transition-colors disabled:opacity-50"
+            className="flex-1 sm:flex-initial px-5 py-2.5 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-xs font-medium uppercase tracking-wider rounded-sm shadow-xs transition-colors disabled:opacity-50 text-center"
           >
             {loading ? "Saving..." : isEditing ? "Update Garment" : "Publish to Vault"}
           </button>

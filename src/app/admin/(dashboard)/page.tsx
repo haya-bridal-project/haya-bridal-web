@@ -137,20 +137,20 @@ export default async function AdminOverviewPage() {
       </div>
 
       {/* Real Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">
         {cards.map((c) => {
           const Icon = c.icon;
           return (
             <Link
               key={c.label}
               href={c.href}
-              className="p-5 bg-[#FFFDF9] border border-[#E8DDD1] hover:border-[#B06F5E] rounded-sm transition-all shadow-xs group"
+              className="p-4 sm:p-5 bg-[#FFFDF9] border border-[#E8DDD1] hover:border-[#B06F5E] rounded-sm transition-all shadow-xs group"
             >
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs uppercase tracking-wider text-[#7A6A5F] font-sans">
                   {c.label}
                 </span>
-                <div className="w-8 h-8 rounded-full bg-[#FAF6F0] text-[#B06F5E] flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-[#FAF6F0] text-[#B06F5E] flex items-center justify-center shrink-0">
                   <Icon className="w-4 h-4 stroke-[1.6]" />
                 </div>
               </div>
@@ -168,10 +168,10 @@ export default async function AdminOverviewPage() {
         })}
       </div>
 
-      {/* Latest Bookings Table */}
-      <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-4">
+      {/* Latest Bookings Table & Mobile Cards */}
+      <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-4 sm:p-6 shadow-xs space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[#E8DDD1]">
-          <h2 className="font-serif text-xl text-[#2B211C] font-normal">
+          <h2 className="font-serif text-lg sm:text-xl text-[#2B211C] font-normal">
             Recent Reservation Activity
           </h2>
           <Link
@@ -183,56 +183,105 @@ export default async function AdminOverviewPage() {
         </div>
 
         {latestBookings && latestBookings.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#FAF6F0] text-[#7A6A5F] uppercase tracking-wider font-sans">
-                <tr>
-                  <th className="py-2.5 px-3">Reference</th>
-                  <th className="py-2.5 px-3">Client</th>
-                  <th className="py-2.5 px-3">Outfit</th>
-                  <th className="py-2.5 px-3">Dates</th>
-                  <th className="py-2.5 px-3">Amount</th>
-                  <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E8DDD1] text-[#2B211C]">
-                {latestBookings.map((b: any) => (
-                  <tr key={b.id} className="hover:bg-[#FAF6F0]/60">
-                    <td className="py-3 px-3 font-mono font-medium text-[#B06F5E]">
+          <>
+            {/* Mobile Card List (screens < md) */}
+            <div className="md:hidden space-y-3">
+              {latestBookings.map((b: any) => (
+                <div
+                  key={b.id}
+                  className="p-3.5 bg-[#FAF6F0]/50 border border-[#E8DDD1] rounded-sm space-y-2.5 text-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-semibold text-[#B06F5E] text-[11px]">
                       {b.reference}
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className="font-medium block">{b.customer_name}</span>
-                      <span className="text-[11px] text-[#7A6A5F]">{b.customer_phone}</span>
-                    </td>
-                    <td className="py-3 px-3 font-serif text-sm">
+                    </span>
+                    <span className="px-2 py-0.5 rounded-xs bg-[#F4ECE1] text-[10px] font-medium uppercase tracking-wider text-[#2B211C]">
+                      {b.status}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="font-serif text-sm font-medium text-[#2B211C]">
                       {b.product_name}
-                    </td>
-                    <td className="py-3 px-3">
+                    </h3>
+                    <p className="text-[11px] text-[#7A6A5F] mt-0.5">
+                      {b.customer_name} • {b.customer_phone}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-[#E8DDD1]/60 text-[11px]">
+                    <span className="text-[#7A6A5F]">
                       {formatDate(b.start_date)} &rarr; {formatDate(b.end_date)}
-                    </td>
-                    <td className="py-3 px-3 font-sans font-semibold">
+                    </span>
+                    <span className="font-sans font-semibold text-[#2B211C]">
                       {formatINR(b.total_paise)}
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className="px-2 py-0.5 rounded-xs bg-[#F4ECE1] text-[11px] font-medium">
-                        {b.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-right">
-                      <Link
-                        href={`/admin/bookings?search=${b.reference}`}
-                        className="text-[#B06F5E] hover:underline font-medium"
-                      >
-                        Inspect
-                      </Link>
-                    </td>
+                    </span>
+                  </div>
+
+                  <div className="pt-1 text-right">
+                    <Link
+                      href={`/admin/bookings?search=${b.reference}`}
+                      className="inline-flex items-center text-xs text-[#B06F5E] font-medium hover:underline"
+                    >
+                      Inspect Details &rarr;
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View (screens >= md) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#FAF6F0] text-[#7A6A5F] uppercase tracking-wider font-sans">
+                  <tr>
+                    <th className="py-2.5 px-3">Reference</th>
+                    <th className="py-2.5 px-3">Client</th>
+                    <th className="py-2.5 px-3">Outfit</th>
+                    <th className="py-2.5 px-3">Dates</th>
+                    <th className="py-2.5 px-3">Amount</th>
+                    <th className="py-2.5 px-3">Status</th>
+                    <th className="py-2.5 px-3 text-right">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-[#E8DDD1] text-[#2B211C]">
+                  {latestBookings.map((b: any) => (
+                    <tr key={b.id} className="hover:bg-[#FAF6F0]/60">
+                      <td className="py-3 px-3 font-mono font-medium text-[#B06F5E]">
+                        {b.reference}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="font-medium block">{b.customer_name}</span>
+                        <span className="text-[11px] text-[#7A6A5F]">{b.customer_phone}</span>
+                      </td>
+                      <td className="py-3 px-3 font-serif text-sm">
+                        {b.product_name}
+                      </td>
+                      <td className="py-3 px-3">
+                        {formatDate(b.start_date)} &rarr; {formatDate(b.end_date)}
+                      </td>
+                      <td className="py-3 px-3 font-sans font-semibold">
+                        {formatINR(b.total_paise)}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="px-2 py-0.5 rounded-xs bg-[#F4ECE1] text-[11px] font-medium">
+                          {b.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <Link
+                          href={`/admin/bookings?search=${b.reference}`}
+                          className="text-[#B06F5E] hover:underline font-medium"
+                        >
+                          Inspect
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
           <div className="py-8 text-center text-xs text-[#7A6A5F]">
             No booking records yet. As customers book outfits online, reservations will appear here.

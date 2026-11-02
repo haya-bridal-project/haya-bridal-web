@@ -34,9 +34,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${plusJakarta.variable} ${cormorant.variable} h-full scroll-smooth antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#FAF6F0] text-[#2B211C] font-sans selection:bg-[#B06F5E] selection:text-white">
+      <body
+        suppressHydrationWarning
+        className="min-h-full flex flex-col bg-[#FAF6F0] text-[#2B211C] font-sans selection:bg-[#B06F5E] selection:text-white"
+      >
         {children}
       </body>
     </html>
