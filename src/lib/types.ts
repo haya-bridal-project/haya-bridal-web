@@ -48,13 +48,29 @@ export type SizeGuide = {
   rows: string[][];
 };
 
+export type ProductCategory = "dress" | "ornament" | "ornaments";
+
+export type DressCustomization = {
+  custom_type?: "standard" | "custom_fit";
+  standard_size?: string;
+  bust_inches?: string;
+  waist_inches?: string;
+  hips_inches?: string;
+  shoulder_inches?: string;
+  length_inches?: string;
+  custom_notes?: string;
+};
+
 export type Product = {
   id: string;
   collection_id: string | null;
   name: string;
   slug: string;
+  category?: ProductCategory;
+  allow_customization?: boolean;
   short_description: string | null;
   description: string | null;
+  price_paise?: number;
   rental_price_paise: number;
   compare_at_price_paise: number | null;
   rental_duration_days: number;
@@ -159,7 +175,11 @@ export type Booking = {
   returned_at: string | null;
   created_at: string;
   updated_at: string;
+  customization?: DressCustomization | null;
+  order_type?: ProductCategory;
 };
+
+export type Order = Booking;
 
 export type Payment = {
   id: string;
@@ -223,12 +243,20 @@ export type HomeSettings = {
   products_heading: string;
 };
 
+export type ShippingSettings = {
+  fee_paise: number;
+  free_shipping_threshold_paise?: number;
+  label: string;
+  estimated_days: string;
+};
+
 export type SiteSettings = {
   brand: BrandSettings;
   contact: ContactSettings;
   social: SocialSettings;
   home: HomeSettings;
   booking: BookingRules;
+  shipping: ShippingSettings;
   product_services: { items: string[] };
   email: { admin_notification_email: string | null };
 };

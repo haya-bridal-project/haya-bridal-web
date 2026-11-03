@@ -8,12 +8,11 @@ import {
   ShieldCheck,
   Lock,
   AlertCircle,
-  Clock,
+  Truck,
   ArrowRight,
   HelpCircle,
 } from "lucide-react";
 import { formatINR } from "@/lib/money";
-import { formatDate } from "@/lib/dates";
 import type { Booking } from "@/lib/types";
 
 interface RazorpayCheckoutWidgetProps {
@@ -24,7 +23,7 @@ interface RazorpayCheckoutWidgetProps {
 
 declare global {
   interface Window {
-    Razorpay?: unknown;
+    Razorpay?: any;
   }
 }
 
@@ -37,7 +36,6 @@ export function RazorpayCheckoutWidget({
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [converting, setConverting] = useState(false);
 
   const handlePayNow = async () => {
     if (!razorpayReady) return;
@@ -61,8 +59,8 @@ export function RazorpayCheckoutWidget({
         key: razorpayKeyId,
         amount: data.amount,
         currency: "INR",
-        name: "Haya Premium Bridal Rental",
-        description: `Rental: ${booking.product_name} (${booking.reference})`,
+        name: "Haya Bridal",
+        description: `Order: ${booking.product_name} (${booking.reference})`,
         order_id: data.order_id,
         prefill: {
           name: booking.customer_name,
@@ -106,36 +104,15 @@ export function RazorpayCheckoutWidget({
         },
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const rzp = new (window.Razorpay as any)(options);
-      rzp.on("payment.failed", (response: { error: { description: string } }) => {
-        setErrorMsg(response.error.description || "Payment attempt failed.");
+      const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", (response: any) => {
+        setErrorMsg(response.error?.description || "Payment failed at gateway.");
         setLoading(false);
       });
       rzp.open();
-    } catch (e: unknown) {
-      setErrorMsg(e instanceof Error ? e.message : "Unable to launch checkout.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Payment gateway error.");
       setLoading(false);
-    }
-  };
-
-  const handleConvertToRequest = async () => {
-    setConverting(true);
-    try {
-      const res = await fetch("/api/bookings/convert-to-request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ booking_id: booking.id }),
-      });
-      if (res.ok) {
-        router.push(`/booking/confirmation/${booking.reference}`);
-      } else {
-        router.push(`/account/bookings`);
-      }
-    } catch {
-      router.push(`/account/bookings`);
-    } finally {
-      setConverting(false);
     }
   };
 
@@ -148,7 +125,7 @@ export function RazorpayCheckoutWidget({
         <div className="lg:col-span-7 space-y-6">
           <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 sm:p-8 shadow-xs">
             <h2 className="font-serif text-2xl text-[#2B211C] font-normal pb-4 border-b border-[#E8DDD1]">
-              Payment Details
+              Online Payment
             </h2>
 
             {razorpayReady ? (
@@ -157,12 +134,16 @@ export function RazorpayCheckoutWidget({
                   <CreditCard className="w-5 h-5 text-[#B06F5E] shrink-0" />
                   <div className="text-xs">
                     <span className="font-medium text-[#2B211C] block">
-                      Razorpay Verified Payment Gateway
+                      Secure Verified Payment Gateway
                     </span>
                     <span className="text-[#7A6A5F]">
-                      Supports UPI, Credit/Debit Cards, NetBanking, and Net Banking.
+                      Supports UPI (Google Pay, PhonePe, Paytm), Credit &amp; Debit Cards, NetBanking.
                     </span>
                   </div>
+                </div>
+
+                <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xs text-[11px] text-amber-900">
+                  <strong>Notice:</strong> All orders must be prepaid online. Cash on Delivery (COD) is not available.
                 </div>
 
                 {errorMsg && (
@@ -176,11 +157,11 @@ export function RazorpayCheckoutWidget({
                   type="button"
                   onClick={handlePayNow}
                   disabled={loading}
-                  className="w-full py-4 px-6 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-xs sm:text-sm font-medium tracking-wide uppercase rounded-sm shadow-sm transition-all flex items-center justify-center gap-2"
+                  className="w-full py-4 px-6 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-xs sm:text-sm font-medium tracking-wide uppercase rounded-sm shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Lock className="w-4 h-4" />
                   <span>
-                    {loading ? "Processing..." : `Pay ${formatINR(booking.total_paise)} via Razorpay`}
+                    {loading ? "Processing..." : `Pay ${formatINR(booking.total_paise)}`}
                   </span>
                 </button>
 
@@ -195,89 +176,77 @@ export function RazorpayCheckoutWidget({
                 <div className="p-4 bg-amber-50/80 border border-amber-200/80 rounded-sm text-xs text-amber-900 space-y-2">
                   <div className="flex items-center gap-2 font-medium">
                     <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
-                    <span>Payment Gateway Setup Notice</span>
+                    <span>Razorpay Credentials Notice</span>
                   </div>
                   <p className="font-light leading-relaxed">
-                    Online Razorpay test/live credentials (<code className="bg-amber-100 px-1 py-0.5 rounded-xs">RAZORPAY_KEY_ID</code> &amp; <code className="bg-amber-100 px-1 py-0.5 rounded-xs">RAZORPAY_KEY_SECRET</code>) have not been supplied in the environment. Per instructions, payment is not faked or simulated.
+                    Razorpay credentials (<code className="bg-amber-100 px-1 py-0.5 rounded-xs">RAZORPAY_KEY_ID</code> &amp; <code className="bg-amber-100 px-1 py-0.5 rounded-xs">RAZORPAY_KEY_SECRET</code>) must be configured in your environment to accept live/test payments.
                   </p>
-                </div>
-
-                <div className="pt-2">
-                  <p className="text-xs text-[#7A6A5F] mb-4">
-                    You can submit this reservation hold directly as a <strong>Booking Request</strong>. Our concierge will verify outfit availability and provide direct payment instructions.
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={handleConvertToRequest}
-                    disabled={converting}
-                    className="w-full py-3.5 px-6 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-xs font-medium tracking-wide uppercase rounded-sm transition-colors flex items-center justify-center gap-2"
-                  >
-                    <span>{converting ? "Submitting..." : "Submit as Booking Request (Pay at Studio)"}</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Booking Breakdown */}
+        {/* Right Order Breakdown */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs">
+          <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-4">
             <h3 className="font-serif text-lg text-[#2B211C] font-normal pb-3 border-b border-[#E8DDD1]">
               Order Summary
             </h3>
 
-            <div className="py-4 space-y-3 text-xs border-b border-[#E8DDD1]">
+            <div className="space-y-3 text-xs border-b border-[#E8DDD1] pb-4">
               <div className="flex justify-between">
-                <span className="text-[#7A6A5F]">Booking Ref:</span>
-                <span className="font-mono font-medium text-[#2B211C]">{booking.reference}</span>
+                <span className="text-[#7A6A5F]">Order Ref:</span>
+                <span className="font-mono font-medium text-[#B06F5E]">{booking.reference}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#7A6A5F]">Outfit:</span>
+                <span className="text-[#7A6A5F]">Item:</span>
                 <span className="font-serif text-sm text-[#2B211C]">{booking.product_name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#7A6A5F]">Dates:</span>
-                <span className="text-[#2B211C] font-sans">
-                  {formatDate(booking.start_date)} &rarr; {formatDate(booking.end_date)}
-                </span>
               </div>
               {booking.size && (
                 <div className="flex justify-between">
-                  <span className="text-[#7A6A5F]">Size:</span>
-                  <span className="text-[#2B211C]">{booking.size}</span>
+                  <span className="text-[#7A6A5F]">Fit / Size:</span>
+                  <span className="font-medium text-[#2B211C]">{booking.size}</span>
                 </div>
               )}
-            </div>
-
-            <div className="py-4 space-y-2 text-xs text-[#7A6A5F] border-b border-[#E8DDD1]">
-              <div className="flex justify-between">
-                <span>Rental Charge</span>
-                <span className="text-[#2B211C] font-medium font-sans">
-                  {formatINR(booking.rental_amount_paise)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Security Deposit (Refundable)</span>
-                <span className="text-[#2B211C] font-medium font-sans">
-                  {formatINR(booking.deposit_paise)}
-                </span>
-              </div>
-              {booking.fees_paise > 0 && (
+              {booking.color && (
                 <div className="flex justify-between">
-                  <span>Fitting & Service Fee</span>
-                  <span className="text-[#2B211C] font-medium font-sans">
-                    {formatINR(booking.fees_paise)}
-                  </span>
+                  <span className="text-[#7A6A5F]">Color:</span>
+                  <span className="text-[#2B211C]">{booking.color}</span>
+                </div>
+              )}
+              {booking.customer_address && (
+                <div className="pt-2 text-[11px] text-[#7A6A5F]">
+                  <span className="font-medium text-[#2B211C] block mb-0.5">Shipping Address:</span>
+                  <p>{booking.customer_address}</p>
+                </div>
+              )}
+              {booking.notes && (
+                <div className="pt-2 text-[11px] text-[#7A6A5F] bg-[#FAF6F0] p-2.5 rounded-xs border border-[#E8DDD1]">
+                  <span className="font-medium text-[#2B211C] block mb-0.5">Customization / Notes:</span>
+                  <p className="line-clamp-3">{booking.notes}</p>
                 </div>
               )}
             </div>
 
-            <div className="pt-4 flex items-baseline justify-between text-base">
+            <div className="space-y-2 text-xs text-[#7A6A5F] border-b border-[#E8DDD1] pb-4">
+              <div className="flex justify-between">
+                <span>Product Price</span>
+                <span className="text-[#2B211C] font-medium font-sans">
+                  {formatINR(booking.rental_amount_paise || (booking.total_paise - (booking.fees_paise || 0)))}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Insured Express Shipping</span>
+                <span className="font-medium text-[#2B211C]">
+                  {formatINR(booking.fees_paise || 0)}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-baseline justify-between text-base">
               <span className="font-serif text-[#2B211C]">Total Payable</span>
-              <span className="font-sans font-bold text-xl text-[#B06F5E]">
+              <span className="font-sans font-bold text-2xl text-[#B06F5E]">
                 {formatINR(booking.total_paise)}
               </span>
             </div>

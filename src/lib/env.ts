@@ -57,7 +57,7 @@ export const env = {
     return {
       apiKey: v.BREVO_API_KEY,
       senderEmail: v.BREVO_SENDER_EMAIL,
-      senderName: read("BREVO_SENDER_NAME") ?? "Haya Premium Bridal Rental",
+      senderName: read("BREVO_SENDER_NAME") ?? "Haya Bridal Couture",
     };
   },
   razorpay() {

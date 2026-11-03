@@ -67,7 +67,7 @@ export function SplashScreen({ customLogoUrl }: SplashScreenProps) {
           href=""
         />
         <p className="mt-4 text-xs font-light tracking-[0.3em] uppercase text-[#D4C3B2]/70 font-sans">
-          Premium Bridal Rental
+          Bridal Couture &amp; Fine Ornaments
         </p>
       </div>
 

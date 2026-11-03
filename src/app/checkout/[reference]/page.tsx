@@ -55,15 +55,15 @@ export default async function CheckoutPage(props: CheckoutPageProps) {
         <nav className="flex items-center space-x-2 text-xs text-[#7A6A5F] mb-6 font-sans">
           <Link href="/" className="hover:text-[#2B211C]">Home</Link>
           <span>/</span>
-          <span className="text-[#2B211C] font-medium">Secure Checkout</span>
+          <span className="text-[#2B211C] font-medium">Razorpay Secure Checkout</span>
         </nav>
 
         <div className="mb-6">
           <span className="text-[11px] font-sans font-semibold uppercase tracking-[0.2em] text-[#B06F5E]">
-            Secure Payment
+            Secure Online Payment
           </span>
           <h1 className="font-serif text-3xl sm:text-4xl text-[#2B211C] font-normal tracking-tight mt-1">
-            Complete Your Rental Deposit & Booking
+            Complete Your Order Payment
           </h1>
         </div>
 

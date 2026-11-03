@@ -39,7 +39,7 @@ export function HayaLogo({
       >
         <Image
           src={logoSrc}
-          alt="Haya Premium Bridal Rental"
+          alt="Haya Bridal Couture & Fine Ornaments"
           fill
           priority={size === "xl" || size === "md"}
           className="object-contain"
@@ -55,7 +55,7 @@ export function HayaLogo({
     <Link
       href={href}
       className="group inline-flex items-center focus:outline-hidden"
-      aria-label="Haya Premium Bridal Rental Home"
+      aria-label="Haya Bridal Couture Home"
     >
       {content}
     </Link>

@@ -20,7 +20,7 @@ export function Footer({ customLogoUrl, contact, social }: FooterProps) {
           <div className="lg:col-span-2 flex flex-col pr-0 lg:pr-8">
             <HayaLogo size="md" variant="dark" customLogoUrl={customLogoUrl} />
             <p className="mt-4 text-xs sm:text-sm text-[#7A6A5F] font-light leading-relaxed max-w-sm">
-              Haya is an exclusive premium bridal rental destination offering handcrafted lehengas, couture ensembles, and occasion wear. Experience the luxury of designer elegance curated for your most cherished celebrations.
+              Haya is an exclusive luxury boutique specializing in handcrafted bridal dresses, couture lehengas, and heritage fine ornaments. Curated bespoke elegance delivered with complimentary tailor-made fittings.
             </p>
             {contact?.phone && (
               <p className="mt-4 text-xs text-[#2B211C] font-medium font-sans">
@@ -37,32 +37,32 @@ export function Footer({ customLogoUrl, contact, social }: FooterProps) {
           {/* Collections Column */}
           <div>
             <h4 className="font-serif text-base font-normal tracking-wide text-[#2B211C] mb-4">
-              Collections
+              Categories &amp; Collections
             </h4>
             <ul className="space-y-2.5 text-xs text-[#7A6A5F]">
               <li>
+                <Link href="/collections?category=dress" className="hover:text-[#B06F5E] transition-colors font-medium text-[#2B211C]">
+                  Bridal Dresses
+                </Link>
+              </li>
+              <li>
+                <Link href="/collections?category=ornament" className="hover:text-[#B06F5E] transition-colors font-medium text-[#2B211C]">
+                  Fine Ornaments
+                </Link>
+              </li>
+              <li>
                 <Link href="/collections/bridal-wear" className="hover:text-[#B06F5E] transition-colors">
-                  Bridal Wear
+                  Heritage Lehengas
                 </Link>
               </li>
               <li>
                 <Link href="/collections/couture" className="hover:text-[#B06F5E] transition-colors">
-                  Couture Collection
+                  Couture Ensembles
                 </Link>
               </li>
               <li>
-                <Link href="/collections/pret-collection" className="hover:text-[#B06F5E] transition-colors">
-                  Pret Collection
-                </Link>
-              </li>
-              <li>
-                <Link href="/collections/kids-wear" className="hover:text-[#B06F5E] transition-colors">
-                  Kids Wear
-                </Link>
-              </li>
-              <li>
-                <Link href="/collections" className="hover:text-[#B06F5E] transition-colors font-medium text-[#2B211C]">
-                  View All Collections &rarr;
+                <Link href="/collections" className="hover:text-[#B06F5E] transition-colors">
+                  View All &rarr;
                 </Link>
               </li>
             </ul>
@@ -76,17 +76,17 @@ export function Footer({ customLogoUrl, contact, social }: FooterProps) {
             <ul className="space-y-2.5 text-xs text-[#7A6A5F]">
               <li>
                 <Link href="/how-it-works" className="hover:text-[#B06F5E] transition-colors">
-                  How It Works
+                  Customization Guide
                 </Link>
               </li>
               <li>
-                <Link href="/consultation" className="hover:text-[#B06F5E] transition-colors">
-                  Book Consultation
+                <Link href="/enquiry" className="hover:text-[#B06F5E] transition-colors">
+                  Client Enquiry
                 </Link>
               </li>
               <li>
                 <Link href="/size-guide" className="hover:text-[#B06F5E] transition-colors">
-                  Fitting & Size Guide
+                  Fitting &amp; Size Guide
                 </Link>
               </li>
               <li>
@@ -96,7 +96,7 @@ export function Footer({ customLogoUrl, contact, social }: FooterProps) {
               </li>
               <li>
                 <Link href="/contact" className="hover:text-[#B06F5E] transition-colors">
-                  Contact Us
+                  Contact Studio
                 </Link>
               </li>
             </ul>
@@ -105,22 +105,22 @@ export function Footer({ customLogoUrl, contact, social }: FooterProps) {
           {/* Policies Column */}
           <div>
             <h4 className="font-serif text-base font-normal tracking-wide text-[#2B211C] mb-4">
-              Policies
+              Policies &amp; Orders
             </h4>
             <ul className="space-y-2.5 text-xs text-[#7A6A5F]">
               <li>
-                <Link href="/rental-policy" className="hover:text-[#B06F5E] transition-colors">
-                  Rental Policy
+                <Link href="/account/bookings" className="hover:text-[#B06F5E] transition-colors font-medium text-[#2B211C]">
+                  Track My Orders
                 </Link>
               </li>
               <li>
                 <Link href="/cancellation-refund" className="hover:text-[#B06F5E] transition-colors">
-                  Cancellation & Refund
+                  Cancellation &amp; Refund
                 </Link>
               </li>
               <li>
                 <Link href="/terms" className="hover:text-[#B06F5E] transition-colors">
-                  Terms & Conditions
+                  Terms &amp; Conditions
                 </Link>
               </li>
               <li>
@@ -140,10 +140,10 @@ export function Footer({ customLogoUrl, contact, social }: FooterProps) {
 
         {/* Separator and Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-[#E8DDD1] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#7A6A5F]">
-          <p>© {currentYear} Haya Premium Bridal Rental. All rights reserved.</p>
+          <p>© {currentYear} Haya Bridal Couture &amp; Fine Ornaments. All rights reserved.</p>
           <div className="flex items-center space-x-6 text-[11px]">
-            <span>Curated Bridal Wear & Haute Couture</span>
-            <span>Handcrafted in India</span>
+            <span>100% Prepaid Online Orders (No COD)</span>
+            <span>Insured Delivery Across India</span>
           </div>
         </div>
       </div>

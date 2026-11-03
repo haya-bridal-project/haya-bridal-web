@@ -22,6 +22,7 @@ interface CollectionsPageProps {
 export default async function CollectionsPage(props: CollectionsPageProps) {
   const searchParams = await props.searchParams;
 
+  const category = typeof searchParams.category === "string" ? searchParams.category : null;
   const sort = typeof searchParams.sort === "string" ? searchParams.sort : "latest";
   const colors = Array.isArray(searchParams.color)
     ? searchParams.color
@@ -44,6 +45,7 @@ export default async function CollectionsPage(props: CollectionsPageProps) {
       getPublishedCollections(),
       getFacets(null),
       listProducts({
+        category,
         sort,
         colors,
         sizes,
@@ -51,7 +53,7 @@ export default async function CollectionsPage(props: CollectionsPageProps) {
         maxPaise: maxPrice,
         q,
         page,
-        pageSize: 20,
+        pageSize: 24,
       }),
       getCurrentUser(),
     ]);
@@ -68,59 +70,63 @@ export default async function CollectionsPage(props: CollectionsPageProps) {
       />
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 w-full">
-        {/* Breadcrumb matching Reference 04 */}
+        {/* Breadcrumb */}
         <nav className="flex items-center space-x-2 text-xs text-[#7A6A5F] mb-6 font-sans">
           <Link href="/" className="hover:text-[#2B211C] transition-colors">
             Home
           </Link>
           <span>/</span>
-          <span className="text-[#2B211C] font-medium">All Collections</span>
+          <span className="text-[#2B211C] font-medium">
+            {category === "dress" ? "Bridal Dresses" : category === "ornament" ? "Fine Ornaments" : "All Collections"}
+          </span>
         </nav>
 
         {/* 2-column layout: Sidebar Filter (left) + Main Product Grid (right) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
-          {/* Filter Sidebar */}
-          <div className="lg:col-span-3">
-            <Suspense fallback={<div className="h-40 bg-white/40 animate-pulse rounded-sm" />}>
-              <CollectionFilterSidebar
-                collections={collections}
-                facets={facets}
-                totalCount={totalCount}
-              />
-            </Suspense>
-          </div>
+        <div className="flex flex-col lg:flex-row items-start gap-8 lg:gap-12">
+          {/* Left Sidebar Filter */}
+          <CollectionFilterSidebar
+            collections={collections}
+            facets={facets}
+            totalCount={totalCount}
+          />
 
-          {/* Product Grid Area */}
-          <div className="lg:col-span-9">
-            <Suspense fallback={<div className="h-10 bg-white/40 animate-pulse rounded-sm mb-4" />}>
-              <CollectionSortHeader
-                title={q ? `Search: "${q}"` : "All Collections"}
-                totalCount={totalCount}
-              />
-            </Suspense>
+          {/* Right Product Grid Area */}
+          <div className="flex-1 w-full min-w-0">
+            {/* Header with Title and Sorting */}
+            <CollectionSortHeader
+              title={
+                category === "dress"
+                  ? "Bespoke Bridal Dresses"
+                  : category === "ornament"
+                  ? "Heritage Fine Ornaments"
+                  : "All Collections & Ensembles"
+              }
+              totalCount={totalCount}
+            />
 
+            {/* Products Grid */}
             {products.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-6 mt-6">
                 {products.map((p) => (
                   <ProductCard key={p.id} product={p} />
                 ))}
               </div>
             ) : (
-              <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-12 text-center shadow-xs">
+              <div className="py-20 text-center bg-[#FFFDF9] rounded-sm border border-[#E8DDD1] p-8 my-6">
                 <h3 className="font-serif text-xl text-[#2B211C] mb-2 font-normal">
-                  No Outfits Found
+                  No products found
                 </h3>
-                <p className="text-xs text-[#7A6A5F] max-w-sm mx-auto mb-6">
-                  {q
-                    ? `No bridal ensembles match your search for "${q}". Try clearing filters.`
-                    : "No published outfits match your selected criteria."}
+                <p className="text-xs text-[#7A6A5F] max-w-sm mx-auto leading-relaxed">
+                  We could not find any products matching your selected filters. Try resetting the filters or searching for another keyword.
                 </p>
-                <Link
-                  href="/collections"
-                  className="inline-flex items-center justify-center px-5 py-2.5 bg-[#B06F5E] text-white text-xs font-medium rounded-sm"
-                >
-                  Clear All Filters
-                </Link>
+                <div className="mt-6">
+                  <Link
+                    href="/collections"
+                    className="inline-block px-5 py-2.5 bg-[#B06F5E] text-white text-xs font-medium uppercase tracking-wider rounded-sm hover:bg-[#975D4E] transition-colors shadow-xs"
+                  >
+                    Reset All Filters
+                  </Link>
+                </div>
               </div>
             )}
           </div>

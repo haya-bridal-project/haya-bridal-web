@@ -123,7 +123,7 @@ export default function LoginPage() {
           Welcome to Your Bridal Vault
         </h2>
         <p className="mt-2 text-xs text-[#7A6A5F]">
-          Access your rental bookings, fitting appointments, and saved wishlist.
+          Access your orders, fitting appointments, and saved wishlist.
         </p>
       </div>
 

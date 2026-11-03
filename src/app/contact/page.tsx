@@ -50,7 +50,7 @@ export default function ContactPage() {
             Contact the Haya Concierge
           </h1>
           <p className="text-xs sm:text-sm text-[#7A6A5F] font-light leading-relaxed">
-            Have questions regarding fitting trials, bridal consultations, or rental timelines? Our concierge team is here to assist.
+            Have questions regarding bespoke tailoring, bridal consultations, or delivery timelines? Our concierge team is here to assist.
           </p>
         </div>
 
@@ -58,7 +58,7 @@ export default function ContactPage() {
           {/* Contact Details Card */}
           <div className="lg:col-span-5 bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-8 shadow-xs space-y-6">
             <h3 className="font-serif text-xl text-[#2B211C] font-normal pb-4 border-b border-[#E8DDD1]">
-              Bridal Studio & Concierge
+              Bridal Studio &amp; Concierge
             </h3>
 
             <div className="space-y-4 text-xs text-[#7A6A5F]">
@@ -73,7 +73,7 @@ export default function ContactPage() {
               <div className="flex items-start gap-3">
                 <Phone className="w-4 h-4 text-[#B06F5E] shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-medium text-[#2B211C] block">Telephone & WhatsApp</span>
+                  <span className="font-medium text-[#2B211C] block">Telephone &amp; WhatsApp</span>
                   <p>+91 (0) 98765 43210</p>
                 </div>
               </div>
@@ -91,7 +91,7 @@ export default function ContactPage() {
                 <div>
                   <span className="font-medium text-[#2B211C] block">Studio Fitting Hours</span>
                   <p>Tuesday &ndash; Sunday: 11:00 AM &ndash; 7:30 PM (By Appointment)</p>
-                  <p>Monday: Reserved for sanitization & catalog care</p>
+                  <p>Monday: Reserved for bespoke tailoring &amp; catalog care</p>
                 </div>
               </div>
             </div>
@@ -182,7 +182,7 @@ export default function ContactPage() {
                     required
                     value={form.message}
                     onChange={(e) => setForm({ ...form, message: e.target.value })}
-                    placeholder="How may we assist you with your wedding or celebration rental?"
+                    placeholder="How may we assist you with your wedding or celebration outfit?"
                     className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
                   />
                 </div>

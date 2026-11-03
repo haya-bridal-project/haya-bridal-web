@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import Image from "next/image";
 import { Upload, X, Check, Star, AlertCircle, Loader2 } from "lucide-react";
+import { ConfirmDialogModal } from "@/components/admin/ConfirmDialogModal";
 import type { AssetRole } from "@/lib/cloudinary";
 
 export type UploadedAsset = {
@@ -37,6 +38,9 @@ export function CloudinaryUploader({
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Remove confirmation modal state
+  const [removeIndex, setRemoveIndex] = useState<number | null>(null);
 
   const handleFiles = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
@@ -131,13 +135,15 @@ export function CloudinaryUploader({
     }
   };
 
-  const removeAsset = (index: number) => {
+  const handleConfirmRemove = () => {
+    if (removeIndex === null) return;
     const next = [...assets];
-    const removed = next.splice(index, 1)[0];
+    const removed = next.splice(removeIndex, 1)[0];
     if (removed?.is_primary && next.length > 0) {
       next[0].is_primary = true;
     }
     onChange(next);
+    setRemoveIndex(null);
   };
 
   const setPrimary = (index: number) => {
@@ -258,8 +264,8 @@ export function CloudinaryUploader({
                   )}
                   <button
                     type="button"
-                    onClick={() => removeAsset(idx)}
-                    title="Remove"
+                    onClick={() => setRemoveIndex(idx)}
+                    title="Remove Image"
                     className="w-6 h-6 rounded-full bg-white/90 hover:bg-red-50 text-[#7A6A5F] hover:text-red-600 flex items-center justify-center shadow-xs transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -297,6 +303,18 @@ export function CloudinaryUploader({
           ))}
         </div>
       )}
+
+      {/* Remove Image Confirmation Modal */}
+      <ConfirmDialogModal
+        isOpen={removeIndex !== null}
+        onClose={() => setRemoveIndex(null)}
+        onConfirm={handleConfirmRemove}
+        title="Remove Photo"
+        message="Are you sure you want to remove this image from the gallery? You will need to re-upload it if you wish to use it again."
+        confirmLabel="Yes, Remove"
+        cancelLabel="Keep Photo"
+        variant="danger"
+      />
     </div>
   );
 }

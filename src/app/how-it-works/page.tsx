@@ -6,51 +6,51 @@ export default function HowItWorksPage() {
   return (
     <PolicyPageLayout
       slug="how-it-works"
-      defaultTitle="How Rental Works at Haya"
+      defaultTitle="How Ordering & Customization Works at Haya"
       defaultContent={
         <div className="space-y-8 font-light text-[#2B211C]">
           <section className="space-y-2">
             <h2 className="font-serif text-xl sm:text-2xl text-[#2B211C]">
-              1. Discover & Reserve
+              1. Discover Dresses &amp; Fine Ornaments
             </h2>
             <p>
-              Browse our curated vault of designer bridal lehengas, couture gowns, and celebration ensembles. Select your size, desired rental duration (3, 5, or 7 days), and event date to reserve your outfit.
+              Explore our curated boutique of handcrafted bridal lehengas, reception couture, and heritage fine jewelry ornaments. Every piece is an authentic creation designed for cherished celebrations.
             </p>
           </section>
 
           <section className="space-y-2">
             <h2 className="font-serif text-xl sm:text-2xl text-[#2B211C]">
-              2. Custom Fitting & Alterations
+              2. Custom Measurements &amp; Personalized Tailoring
             </h2>
             <p>
-              Every rental includes complimentary blouse and waist alteration. Our master bridal tailor coordinates your exact measurements so your ensemble drapes with bespoke perfection.
+              For dresses, choose between standard sizing (XS to XXL) or select <strong>Custom Measurements</strong>. Provide your exact bust, waist, hips, and length requirements along with styling notes (blouse neckline, sleeve length). Our master tailors custom-stitch the garment to your unique silhouette.
             </p>
           </section>
 
           <section className="space-y-2">
             <h2 className="font-serif text-xl sm:text-2xl text-[#2B211C]">
-              3. Studio Pickup or White-Glove Delivery
+              3. 100% Secure Razorpay Online Checkout (No COD)
             </h2>
             <p>
-              Your outfit arrives steamed, spotlessly sanitized, and protected in a luxury garment case 1 day prior to your rental start date.
+              Prepay securely via our integrated Razorpay payment gateway using UPI (Google Pay, PhonePe, Paytm), Credit &amp; Debit Cards, or NetBanking. Please note that Cash on Delivery (COD) is not available for custom couture garments and fine ornaments.
             </p>
           </section>
 
           <section className="space-y-2">
             <h2 className="font-serif text-xl sm:text-2xl text-[#2B211C]">
-              4. Celebrate Unforgettably
+              4. Master Handcrafting &amp; Quality Inspection
             </h2>
             <p>
-              Wear your designer outfit with pure confidence. Savor every moment knowing your look reflects authentic haute couture craftsmanship.
+              Your ensemble is stitched and embellished with intricate hand embroidery, steam finished to museum standards, and safely packaged in our luxury keepsake trunk.
             </p>
           </section>
 
           <section className="space-y-2">
             <h2 className="font-serif text-xl sm:text-2xl text-[#2B211C]">
-              5. Effortless Return & Deposit Refund
+              5. Insured Express Doorstep Delivery
             </h2>
             <p>
-              On the final rental day, simply pack the outfit into its case. We handle all professional dry-cleaning. Your security deposit is promptly released to your account upon return verification.
+              We courier your order across India via express insured shipping. Real-time tracking and delivery updates are sent directly to your phone and WhatsApp.
             </p>
           </section>
         </div>

@@ -4,14 +4,14 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HayaLogo } from "@/components/brand/HayaLogo";
+import { ConfirmDialogModal } from "@/components/admin/ConfirmDialogModal";
 import {
   LayoutDashboard,
-  Sparkles,
+  Package,
   Layers,
   Image as ImageIcon,
-  CalendarCheck,
+  ShoppingBag,
   MessageSquare,
-  UserCheck,
   Settings,
   Mail,
   ExternalLink,
@@ -30,12 +30,11 @@ interface AdminLayoutShellProps {
 
 const NAVIGATION_ITEMS = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
-  { label: "Products", href: "/admin/products", icon: Sparkles },
+  { label: "Products", href: "/admin/products", icon: Package },
   { label: "Collections", href: "/admin/collections", icon: Layers },
   { label: "Homepage & Banners", href: "/admin/homepage", icon: ImageIcon },
-  { label: "Bookings & Rentals", href: "/admin/bookings", icon: CalendarCheck },
+  { label: "Orders", href: "/admin/bookings", icon: ShoppingBag },
   { label: "Client Enquiries", href: "/admin/enquiries", icon: MessageSquare },
-  { label: "Consultations", href: "/admin/consultations", icon: UserCheck },
   { label: "Settings & Pricing", href: "/admin/settings", icon: Settings },
   { label: "Email Outbox", href: "/admin/emails", icon: Mail },
 ];
@@ -46,6 +45,8 @@ export function AdminLayoutShell({
   role,
 }: AdminLayoutShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [signOutModalOpen, setSignOutModalOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const pathname = usePathname();
 
   // Close mobile drawer on route change
@@ -70,6 +71,15 @@ export function AdminLayoutShell({
       return pathname === "/admin";
     }
     return pathname.startsWith(href);
+  };
+
+  const handleConfirmSignOut = () => {
+    setSigningOut(true);
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = "/api/auth/signout";
+    document.body.appendChild(form);
+    form.submit();
   };
 
   return (
@@ -101,7 +111,7 @@ export function AdminLayoutShell({
             className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#B06F5E] hover:bg-[#975D4E] text-white rounded-sm text-xs font-medium shadow-xs transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">New Outfit</span>
+            <span className="hidden sm:inline">New Product</span>
           </Link>
         </div>
       </header>
@@ -193,16 +203,18 @@ export function AdminLayoutShell({
                   <span>Storefront</span>
                 </Link>
 
-                <form action="/api/auth/signout" method="POST">
-                  <button
-                    type="submit"
-                    className="text-red-700 hover:text-red-900 inline-flex items-center gap-1 font-medium"
-                    title="Sign Out"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>Sign Out</span>
-                  </button>
-                </form>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setSignOutModalOpen(true);
+                  }}
+                  className="text-red-700 hover:text-red-900 inline-flex items-center gap-1 font-medium transition-colors"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign Out</span>
+                </button>
               </div>
             </div>
           </aside>
@@ -275,16 +287,15 @@ export function AdminLayoutShell({
               <span>Live Website</span>
             </Link>
 
-            <form action="/api/auth/signout" method="POST">
-              <button
-                type="submit"
-                className="text-red-700 hover:text-red-900 inline-flex items-center gap-1"
-                title="Sign Out"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Exit</span>
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={() => setSignOutModalOpen(true)}
+              className="text-red-700 hover:text-red-900 inline-flex items-center gap-1 font-medium transition-colors"
+              title="Sign Out"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Exit</span>
+            </button>
           </div>
         </div>
       </aside>
@@ -308,7 +319,7 @@ export function AdminLayoutShell({
               className="px-3.5 py-1.5 bg-[#B06F5E] hover:bg-[#975D4E] text-white rounded-sm font-medium transition-colors shadow-xs inline-flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>+ New Outfit</span>
+              <span>+ New Product</span>
             </Link>
           </div>
         </header>
@@ -317,6 +328,19 @@ export function AdminLayoutShell({
           {children}
         </main>
       </div>
+
+      {/* Sign Out Confirmation Modal */}
+      <ConfirmDialogModal
+        isOpen={signOutModalOpen}
+        onClose={() => setSignOutModalOpen(false)}
+        onConfirm={handleConfirmSignOut}
+        title="Sign Out of Staff Portal"
+        message={`Are you sure you want to end your current administrative session (${userEmail})? You will be signed out and redirected to the login screen.`}
+        confirmLabel="Yes, Sign Out"
+        cancelLabel="Stay Signed In"
+        variant="signout"
+        loading={signingOut}
+      />
     </div>
   );
 }

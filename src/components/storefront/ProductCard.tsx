@@ -41,19 +41,20 @@ export function ProductCard({
         body: JSON.stringify({ product_id: product.id, action: nextState ? "add" : "remove" }),
       });
       if (!res.ok && res.status === 401) {
-        // Not authenticated, redirect to login
         window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
         return;
       }
       onWishlistToggle?.(product.id, nextState);
     } catch {
-      setWishlisted(!nextState); // Rollback on error
+      setWishlisted(!nextState);
     } finally {
       setIsToggling(false);
     }
   };
 
   const [imgError, setImgError] = useState(false);
+  const pricePaise = product.price_paise ?? product.rental_price_paise;
+  const isOrnament = product.category === "ornament" || product.category === "ornaments";
 
   return (
     <div className="group flex flex-col bg-[#FFFDF9] rounded-sm overflow-hidden border border-[#E8DDD1] shadow-xs hover:shadow-md transition-all duration-300">
@@ -74,7 +75,9 @@ export function ProductCard({
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center text-[#7A6A5F] bg-[#F4ECE1]">
             <span className="font-serif text-lg text-[#2B211C]">{product.name}</span>
-            <span className="text-[11px] uppercase tracking-wider text-[#7A6A5F] mt-1">Bridal Couture</span>
+            <span className="text-[11px] uppercase tracking-wider text-[#7A6A5F] mt-1">
+              {isOrnament ? "Fine Ornaments" : "Bridal Couture"}
+            </span>
           </div>
         )}
 
@@ -92,7 +95,7 @@ export function ProductCard({
           />
         </button>
 
-        {/* Featured Tag */}
+        {/* Featured Badge */}
         {product.is_featured && (
           <div className="absolute top-2 left-2 sm:top-3 left-3 bg-[#FAF6F0]/90 backdrop-blur-xs px-2 py-0.5 rounded-sm border border-[#E8DDD1] text-[9px] sm:text-[10px] font-sans font-medium uppercase tracking-wider text-[#2B211C]">
             Featured
@@ -105,7 +108,7 @@ export function ProductCard({
         <div>
           {/* Subtitle / Collection Tag */}
           <p className="text-[9px] sm:text-[11px] font-sans text-[#7A6A5F] tracking-wide uppercase mb-0.5 sm:mb-1 line-clamp-1">
-            {product.collection?.name || "Bridal Rental"}
+            {product.collection?.name || (isOrnament ? "Fine Ornaments" : "Bespoke Bridal")}
           </p>
 
           {/* Product Name */}
@@ -116,24 +119,26 @@ export function ProductCard({
             {product.name}
           </Link>
 
-          {/* Price & Duration */}
-          <div className="mt-1 sm:mt-2 flex flex-col xs:flex-row xs:items-baseline xs:gap-1.5">
-            <span className="text-xs sm:text-sm font-semibold text-[#2B211C] font-sans">
-              {formatINR(product.rental_price_paise)}
+          {/* Price */}
+          <div className="mt-1 sm:mt-2 flex items-baseline gap-2">
+            <span className="text-xs sm:text-base font-semibold text-[#2B211C] font-sans">
+              {formatINR(pricePaise)}
             </span>
-            <span className="text-[10px] sm:text-xs text-[#7A6A5F] font-sans">
-              / {product.rental_duration_days} Days
-            </span>
+            {product.compare_at_price_paise && product.compare_at_price_paise > pricePaise && (
+              <span className="text-[10px] sm:text-xs text-[#7A6A5F] line-through font-sans">
+                {formatINR(product.compare_at_price_paise)}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* View Details Action Button matching Reference 04 */}
+        {/* Action Button */}
         <div className="mt-2 sm:mt-4 pt-2 sm:pt-3 border-t border-[#E8DDD1]/60">
           <Link
             href={`/products/${product.slug}`}
             className="w-full inline-flex items-center justify-center py-1.5 sm:py-2 px-2 sm:px-4 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-[10px] sm:text-xs font-medium tracking-wider uppercase rounded-sm transition-colors text-center shadow-xs"
           >
-            View Details
+            {isOrnament ? "Buy Ornament" : "Customize & Order"}
           </Link>
         </div>
       </div>
