@@ -1,6 +1,5 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import {
   getProductBySlug,
   getSiteSettings,
@@ -34,12 +33,20 @@ export default async function BookOutfitPage(props: BookPageProps) {
 
   const settings = await getSiteSettings();
 
-  const duration = typeof searchParams.duration === "string"
-    ? parseInt(searchParams.duration, 10)
-    : product.rental_duration_days;
-  const initialSize = typeof searchParams.size === "string" ? searchParams.size : product.sizes[0] || "";
+  const initialSize = typeof searchParams.size === "string" ? searchParams.size : product.sizes[0] || "Standard";
   const initialColor = typeof searchParams.color === "string" ? searchParams.color : product.colors[0]?.name || "";
-  const initialStart = typeof searchParams.start === "string" ? searchParams.start : "";
+  const isCustom = searchParams.is_custom === "true";
+  const bust = typeof searchParams.bust === "string" ? searchParams.bust : "";
+  const waist = typeof searchParams.waist === "string" ? searchParams.waist : "";
+  const hips = typeof searchParams.hips === "string" ? searchParams.hips : "";
+  const shoulder = typeof searchParams.shoulder === "string" ? searchParams.shoulder : "";
+  const length = typeof searchParams.length === "string" ? searchParams.length : "";
+  const customNotes = typeof searchParams.custom_notes === "string" ? searchParams.custom_notes : "";
+
+  const isOrnament = product.category === "ornament" || product.category === "ornaments";
+  if (!isOrnament) {
+    redirect(`/products/${product.slug}`);
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF6F0]">
@@ -54,15 +61,15 @@ export default async function BookOutfitPage(props: BookPageProps) {
           <span>/</span>
           <Link href={`/products/${product.slug}`} className="hover:text-[#2B211C]">{product.name}</Link>
           <span>/</span>
-          <span className="text-[#2B211C] font-medium">Reserve & Book</span>
+          <span className="text-[#2B211C] font-medium">Checkout</span>
         </nav>
 
         <div className="mb-8">
           <span className="text-[11px] font-sans font-semibold uppercase tracking-[0.2em] text-[#B06F5E]">
-            Rental Reservation
+            {isOrnament ? "Artisan Ornament Purchase" : "Bridal Dress Order & Customization"}
           </span>
           <h1 className="font-serif text-3xl sm:text-4xl text-[#2B211C] font-normal tracking-tight mt-1">
-            Reserve Your Bridal Outfit
+            Complete Your Order
           </h1>
         </div>
 
@@ -70,10 +77,17 @@ export default async function BookOutfitPage(props: BookPageProps) {
           product={product}
           user={user}
           settings={settings}
-          initialDuration={duration}
+          initialDuration={1}
           initialSize={initialSize}
           initialColor={initialColor}
-          initialStart={initialStart}
+          initialStart={new Date().toISOString().split("T")[0]}
+          initialIsCustom={isCustom}
+          initialBust={bust}
+          initialWaist={waist}
+          initialHips={hips}
+          initialShoulder={shoulder}
+          initialLength={length}
+          initialCustomNotes={customNotes}
         />
       </main>
 

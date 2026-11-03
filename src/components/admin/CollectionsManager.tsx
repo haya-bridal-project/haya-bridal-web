@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Plus, Edit2, Trash2, Eye, EyeOff, Check, X, Layers } from "lucide-react";
 import { CloudinaryUploader, type UploadedAsset } from "@/components/admin/CloudinaryUploader";
+import { ConfirmDialogModal } from "@/components/admin/ConfirmDialogModal";
 import type { Collection } from "@/lib/types";
 
 interface CollectionsManagerProps {
@@ -28,6 +29,11 @@ export function CollectionsManager({
   const [assets, setAssets] = useState<UploadedAsset[]>([]);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Delete modal states
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [collectionToDelete, setCollectionToDelete] = useState<Collection | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const startCreate = () => {
     setIsCreating(true);
@@ -117,14 +123,21 @@ export function CollectionsManager({
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to remove this collection?")) return;
+  const handleConfirmDelete = async () => {
+    if (!collectionToDelete) return;
+    setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/collections/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/collections/${collectionToDelete.id}`, { method: "DELETE" });
       if (res.ok) {
-        setCollections(collections.filter((c) => c.id !== id));
+        setCollections(collections.filter((c) => c.id !== collectionToDelete.id));
+        setDeleteModalOpen(false);
+        setCollectionToDelete(null);
       }
-    } catch {}
+    } catch (err) {
+      console.error("Failed to delete collection", err);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -353,8 +366,11 @@ export function CollectionsManager({
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleDelete(col.id)}
-                    className="p-1 text-[#7A6A5F] hover:text-red-600"
+                    onClick={() => {
+                      setCollectionToDelete(col);
+                      setDeleteModalOpen(true);
+                    }}
+                    className="p-1 text-[#7A6A5F] hover:text-red-600 transition-colors"
                     title="Delete"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -365,6 +381,26 @@ export function CollectionsManager({
           </div>
         ))}
       </div>
+
+      {/* Delete Collection Confirmation Modal */}
+      <ConfirmDialogModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setCollectionToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Remove Collection"
+        message={
+          collectionToDelete
+            ? `Are you sure you want to remove the collection "${collectionToDelete.name}"? Products inside this collection will remain in your vault catalog.`
+            : "Are you sure you want to remove this collection?"
+        }
+        confirmLabel="Yes, Remove Collection"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={deleting}
+      />
     </div>
   );
 }

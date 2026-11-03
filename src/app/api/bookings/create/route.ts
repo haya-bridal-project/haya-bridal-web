@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { computeRentalPrice } from "@/lib/money";
-import { rentalEndDate, isIsoDate } from "@/lib/dates";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { emailBookingRequested } from "@/lib/email/events";
 import type { Booking } from "@/lib/types";
 
@@ -23,148 +21,133 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       product_id,
-      start_date,
-      duration_days,
       size,
       color,
       name,
       email,
       phone,
       address,
-      event_date,
       notes,
-      workflow,
+      customization,
+      order_type,
     } = body;
 
-    if (!product_id || !start_date || !duration_days || !name || !email || !phone) {
-      return NextResponse.json({ error: "Missing required booking details" }, { status: 400 });
+    if (!product_id || !name || !email || !phone) {
+      return NextResponse.json({ error: "Missing required order details" }, { status: 400 });
     }
 
-    if (!isIsoDate(start_date)) {
-      return NextResponse.json({ error: "Invalid start date format" }, { status: 400 });
-    }
+    const serviceClient = createServiceClient();
 
-    // Try calling the stored procedure first
-    const { data: rpcData, error: rpcError } = await supabase.rpc("create_booking", {
-      p_product_id: product_id,
-      p_start: start_date,
-      p_duration: duration_days,
-      p_size: size || null,
-      p_color: color || null,
-      p_name: name,
-      p_email: email,
-      p_phone: phone,
-      p_address: address || null,
-      p_event_date: event_date || null,
-      p_notes: notes || null,
-      p_workflow: workflow === "payment" ? "payment" : "request",
-    });
-
-    if (!rpcError && rpcData) {
-      // Fetch inserted booking to trigger Brevo notification
-      const { data: createdBooking } = await supabase
-        .from("bookings")
-        .select("*")
-        .eq("id", rpcData.id)
-        .single();
-
-      if (createdBooking) {
-        emailBookingRequested(createdBooking as Booking).catch((e) =>
-          console.error("[email] booking request error", e)
-        );
-      }
-
-      return NextResponse.json({
-        ok: true,
-        id: rpcData.id,
-        reference: rpcData.reference,
-        total_paise: rpcData.total_paise,
-        status: rpcData.status,
-      });
-    }
-
-    // Fallback: direct atomic insertion if RPC is not yet created in Supabase
     // 1. Fetch authoritative product record
-    const { data: product, error: pError } = await supabase
+    const { data: product, error: pError } = await serviceClient
       .from("products")
-      .select("*,product_rental_options(*)")
+      .select("*")
       .eq("id", product_id)
       .eq("is_published", true)
       .single();
 
     if (pError || !product) {
-      return NextResponse.json({ error: "Product unavailable for rent" }, { status: 404 });
+      return NextResponse.json({ error: "Product unavailable for purchase" }, { status: 404 });
     }
 
-    const priceBreakdown = computeRentalPrice({
-      basePricePaise: product.rental_price_paise,
-      baseDurationDays: product.rental_duration_days,
-      options: product.product_rental_options || [],
-      durationDays: duration_days,
-      depositPaise: product.deposit_paise,
-      feesPaise: 0,
-    });
-
-    if (!priceBreakdown) {
-      return NextResponse.json({ error: "Invalid rental duration" }, { status: 400 });
+    const pricePaise = product.price_paise ?? product.rental_price_paise;
+    if (!pricePaise || pricePaise < 100) {
+      return NextResponse.json({ error: "Invalid product price" }, { status: 400 });
     }
+
+    // 2. Authoritative shipping charge calculation from site_settings (Zero GST)
+    let shippingPaise = 0;
+    try {
+      const { data: shippingSetting } = await serviceClient
+        .from("site_settings")
+        .select("value")
+        .eq("key", "shipping")
+        .maybeSingle();
+
+      if (shippingSetting?.value) {
+        shippingPaise = Number(shippingSetting.value.fee_paise) || 0;
+      }
+    } catch {
+      shippingPaise = 0;
+    }
+
+    const totalPaise = pricePaise + shippingPaise;
 
     const reference = generateRef();
-    const endDate = rentalEndDate(start_date, duration_days);
-    const holdExpires = new Date(Date.now() + 20 * 60 * 1000).toISOString();
-    const finalStatus = workflow === "payment" ? "pending_payment" : "requested";
+    const today = new Date().toISOString().split("T")[0];
+    const holdExpires = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
-    const { data: inserted, error: insError } = await supabase
+    const baseInsert = {
+      reference,
+      customer_id: authData.user.id,
+      product_id: product.id,
+      product_name: product.name,
+      size: size || null,
+      color: color || null,
+      start_date: today,
+      end_date: today,
+      duration_days: 1,
+      buffer_days: 0,
+      rental_amount_paise: pricePaise,
+      deposit_paise: 0,
+      fees_paise: shippingPaise,
+      discount_paise: 0,
+      total_paise: totalPaise,
+      currency: "INR",
+      workflow: "payment",
+      status: "pending_payment",
+      payment_status: "unpaid",
+      hold_expires_at: holdExpires,
+      customer_name: name.trim(),
+      customer_email: email.toLowerCase().trim(),
+      customer_phone: phone.trim(),
+      customer_address: address ? address.trim() : null,
+      notes: notes ? notes.trim() : null,
+    };
+
+    // Try inserting with customization & order_type fields
+    let insertedBooking: any = null;
+    const { data: insertedWithExtra, error: insErrorWithExtra } = await serviceClient
       .from("bookings")
       .insert({
-        reference,
-        customer_id: authData.user.id,
-        product_id: product.id,
-        product_name: product.name,
-        size: size || null,
-        color: color || null,
-        start_date,
-        end_date: endDate,
-        duration_days,
-        buffer_days: product.buffer_days || 2,
-        rental_amount_paise: priceBreakdown.rental_paise,
-        deposit_paise: priceBreakdown.deposit_paise,
-        fees_paise: priceBreakdown.fees_paise,
-        total_paise: priceBreakdown.total_paise,
-        currency: "INR",
-        workflow: workflow === "payment" ? "payment" : "request",
-        status: finalStatus,
-        payment_status: "unpaid",
-        hold_expires_at: holdExpires,
-        customer_name: name,
-        customer_email: email.toLowerCase().trim(),
-        customer_phone: phone,
-        customer_address: address || null,
-        event_date: event_date || null,
-        notes: notes || null,
+        ...baseInsert,
+        customization: customization || {},
+        order_type: order_type || product.category || "dress",
       })
       .select("*")
       .single();
 
-    if (insError) {
-      console.error("[bookings] insert error", insError);
-      return NextResponse.json({ error: "Unable to create booking record" }, { status: 500 });
+    if (!insErrorWithExtra && insertedWithExtra) {
+      insertedBooking = insertedWithExtra;
+    } else {
+      // Fallback: If customization/order_type columns don't exist yet in Supabase schema
+      const { data: fallbackInserted, error: fallbackError } = await serviceClient
+        .from("bookings")
+        .insert(baseInsert)
+        .select("*")
+        .single();
+
+      if (fallbackError || !fallbackInserted) {
+        console.error("[bookings] insert error", fallbackError || insErrorWithExtra);
+        return NextResponse.json({ error: "Unable to create order record." }, { status: 500 });
+      }
+      insertedBooking = fallbackInserted;
     }
 
     // Trigger Brevo transactional email
-    emailBookingRequested(inserted as Booking).catch((e) =>
-      console.error("[email] booking request error", e)
+    emailBookingRequested(insertedBooking as Booking).catch((e) =>
+      console.error("[email] order notification error", e)
     );
 
     return NextResponse.json({
       ok: true,
-      id: inserted.id,
-      reference: inserted.reference,
-      total_paise: inserted.total_paise,
-      status: inserted.status,
+      id: insertedBooking.id,
+      reference: insertedBooking.reference,
+      total_paise: insertedBooking.total_paise,
+      status: insertedBooking.status,
     });
   } catch (err: unknown) {
-    console.error("[bookings/create] unexpected error", err);
+    console.error("[api/bookings/create] unexpected error", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

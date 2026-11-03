@@ -2,31 +2,31 @@ import { PolicyPageLayout } from "@/components/storefront/PolicyPageLayout";
 
 export const dynamic = "force-dynamic";
 
-export default function AboutPage() {
+export default async function AboutPage() {
   return (
     <PolicyPageLayout
       slug="about"
-      defaultTitle="About Haya Premium Bridal"
+      defaultTitle="About Haya Bridal Couture"
       defaultContent={
         <div className="space-y-6 font-light text-[#2B211C]">
           <p className="text-base font-serif text-[#2B211C] leading-relaxed">
-            Haya was conceived to redefine bridal luxury — making the world’s most magnificent handcrafted ensembles accessible for every celebration without compromise.
+            Haya was conceived to celebrate bespoke bridal luxury — crafting magnificent handcrafted bridal couture and fine heritage ornaments for your most cherished celebrations.
           </p>
           <p>
-            Bridal couture represents the pinnacle of Indian artisanal artistry: zardozi embroidery, dabka needlework, silk jacquards, and meticulous hand-beading that require hundreds of hours to craft. Yet, most wedding outfits are worn only once before remaining locked away in a closet.
+            Bridal couture represents the pinnacle of Indian artisanal artistry: authentic zardozi embroidery, dabka needlework, pure silk jacquards, and meticulous hand-beading requiring hundreds of hours of master craftsmanship.
           </p>
           <p>
-            Haya curates an exclusive vault of premier bridal and couture wear for rent. Each piece is preserved with archival care, tailored to your exact body measurements, and delivered in pristine condition.
+            Haya creates bespoke, made-to-order bridal lehengas, gowns, and hand-selected bridal jewelry sets. Each creation is tailored to your exact body silhouette and delivered in luxury bespoke packaging.
           </p>
           <div className="pt-4 border-t border-[#E8DDD1]">
             <h3 className="font-serif text-lg text-[#2B211C] mb-2 font-medium">
               Our Pillars of Excellence
             </h3>
             <ul className="space-y-2 list-disc list-inside text-[#7A6A5F]">
-              <li>Handcrafted artisanal couture with zero synthetic compromise.</li>
-              <li>Bespoke fitting and personal styling sessions for every bride.</li>
-              <li>Strict multi-stage sanitation and fabric preservation.</li>
-              <li>Transparent rental pricing and guaranteed date reservation.</li>
+              <li>Authentic artisanal couture with pure fabrics and hand-embroidery.</li>
+              <li>Bespoke custom tailoring and personal master stylist guidance.</li>
+              <li>Heritage bridal ornaments with 22K micro-plating and certified authenticity.</li>
+              <li>Direct, transparent pricing with dedicated concierge order tracking.</li>
             </ul>
           </div>
         </div>

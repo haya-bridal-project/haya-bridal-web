@@ -38,15 +38,15 @@ export default async function CustomerBookingsPage() {
         <nav className="flex items-center space-x-2 text-xs text-[#7A6A5F] mb-6 font-sans">
           <Link href="/account" className="hover:text-[#2B211C]">My Account</Link>
           <span>/</span>
-          <span className="text-[#2B211C] font-medium">Rental Bookings</span>
+          <span className="text-[#2B211C] font-medium">My Orders</span>
         </nav>
 
         <div className="mb-8">
           <span className="text-[11px] font-sans font-semibold uppercase tracking-[0.2em] text-[#B06F5E]">
-            Client Portal
+            Customer Portal
           </span>
           <h1 className="font-serif text-3xl sm:text-4xl text-[#2B211C] font-normal tracking-tight mt-1">
-            Your Rental Reservations
+            Your Orders &amp; Customizations
           </h1>
         </div>
 
@@ -68,9 +68,15 @@ export default async function CustomerBookingsPage() {
                       {b.product_name}
                     </h3>
                     <p className="text-xs text-[#7A6A5F] mt-1 font-sans">
-                      Rental Dates: <strong>{formatDate(b.start_date)}</strong> &rarr; <strong>{formatDate(b.end_date)}</strong> ({b.duration_days} Days)
-                      {b.size ? ` • Size: ${b.size}` : ""}
+                      Ordered on: <strong>{formatDate(b.created_at)}</strong>
+                      {b.size ? ` • Fit / Size: ${b.size}` : ""}
+                      {b.color ? ` • Color: ${b.color}` : ""}
                     </p>
+                    {b.notes && (
+                      <p className="text-[11px] text-[#7A6A5F] mt-1 line-clamp-1 italic">
+                        {b.notes}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between md:justify-end gap-6 pt-3 md:pt-0 border-t md:border-0 border-[#E8DDD1]">
@@ -79,7 +85,7 @@ export default async function CustomerBookingsPage() {
                         {formatINR(b.total_paise)}
                       </span>
                       <span className="text-[11px] text-[#7A6A5F]">
-                        Payment: {PAYMENT_STATUS_LABEL[b.payment_status] || b.payment_status}
+                        {PAYMENT_STATUS_LABEL[b.payment_status] || b.payment_status}
                       </span>
                     </div>
 
@@ -89,7 +95,7 @@ export default async function CustomerBookingsPage() {
                           href={`/checkout/${b.reference}`}
                           className="px-4 py-2 bg-[#B06F5E] text-white text-xs font-medium rounded-sm hover:bg-[#975D4E] transition-colors"
                         >
-                          Pay Deposit
+                          Pay via Razorpay
                         </Link>
                       )}
                       <Link
@@ -104,13 +110,16 @@ export default async function CustomerBookingsPage() {
               ))}
             </div>
           ) : (
-            <div className="p-12 text-center text-xs text-[#7A6A5F]">
-              <p className="mb-4">No rental bookings on record yet.</p>
+            <div className="p-12 text-center space-y-4">
+              <p className="font-serif text-lg text-[#2B211C]">No orders placed yet.</p>
+              <p className="text-xs text-[#7A6A5F]">
+                Discover our latest handcrafted bridal dresses and fine ornaments.
+              </p>
               <Link
                 href="/collections"
-                className="inline-flex px-5 py-2.5 bg-[#B06F5E] text-white rounded-sm font-medium"
+                className="inline-block px-5 py-2.5 bg-[#B06F5E] text-white text-xs font-medium uppercase tracking-wider rounded-sm hover:bg-[#975D4E] transition-colors"
               >
-                Explore Bridal Collection
+                Explore Collections
               </Link>
             </div>
           )}

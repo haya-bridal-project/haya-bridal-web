@@ -54,7 +54,7 @@ export function ProductDetailGallery({
 
   if (images.length === 0) {
     return (
-      <div className="aspect-[3/4] w-full rounded-sm bg-[#F4ECE1] border border-[#E8DDD1] flex flex-col items-center justify-center p-8 text-center text-[#7A6A5F]">
+      <div className="aspect-[3/4] w-full max-h-[70vh] lg:max-h-[calc(100vh-8.5rem)] rounded-sm bg-[#F4ECE1] border border-[#E8DDD1] flex flex-col items-center justify-center p-8 text-center text-[#7A6A5F]">
         <span className="font-serif text-2xl text-[#2B211C] mb-2">{productName}</span>
         <span className="text-xs tracking-wider uppercase">Bridal Couture</span>
       </div>
@@ -62,10 +62,10 @@ export function ProductDetailGallery({
   }
 
   return (
-    <div className="flex flex-col-reverse lg:flex-row gap-3 sm:gap-4 items-start w-full select-none">
+    <div className="flex flex-col-reverse lg:flex-row gap-3 sm:gap-4 items-start w-full select-none justify-center">
       {/* Desktop Vertical Thumbnail Stack (Left column matching Reference 05) */}
       {images.length > 1 && (
-        <div className="hidden lg:flex flex-col gap-3 w-20 shrink-0 max-h-[640px] overflow-y-auto no-scrollbar">
+        <div className="hidden lg:flex flex-col gap-3 w-16 xl:w-20 shrink-0 h-[55vh] sm:h-[65vh] lg:h-[calc(100vh-8.5rem)] lg:max-h-[720px] overflow-y-auto no-scrollbar">
           {images.map((img, idx) => {
             const isSelected = idx === selectedIndex;
             return (
@@ -92,9 +92,9 @@ export function ProductDetailGallery({
         </div>
       )}
 
-      {/* Main Image Showcase (Touch swipeable on mobile) */}
+      {/* Main Image Showcase (Fits screen view height, touch swipeable on mobile) */}
       <div
-        className="relative aspect-[3/4] w-full flex-1 rounded-sm overflow-hidden bg-[#F4ECE1] border border-[#E8DDD1] shadow-xs group"
+        className="relative aspect-[3/4] w-full lg:w-auto h-[55vh] sm:h-[65vh] lg:h-[calc(100vh-8.5rem)] lg:max-h-[720px] lg:min-h-[460px] max-w-full flex-1 rounded-sm overflow-hidden bg-[#F4ECE1] border border-[#E8DDD1] shadow-xs group mx-auto shrink-0"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -104,7 +104,7 @@ export function ProductDetailGallery({
           alt={activeImage.alt || productName}
           fill
           priority
-          className="object-cover object-center transition-all duration-500"
+          className="object-cover object-top transition-all duration-500"
           sizes="(max-width: 1024px) 100vw, 50vw"
         />
 

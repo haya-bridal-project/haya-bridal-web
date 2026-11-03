@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     let query = serviceClient
       .from("enquiries")
-      .select("*,product:products(id,name,slug)")
+      .select("*,product:products(id,name,slug,primary_image_url,category)")
       .order("created_at", { ascending: false });
 
     if (status && status !== "all") {

@@ -14,7 +14,7 @@ import type {
 } from "@/lib/types";
 
 export const DEFAULT_SETTINGS: SiteSettings = {
-  brand: { site_name: "Haya", tagline: "Premium Bridal Rental", logo_url: "/haya-logo-transparent.png", logo_public_id: null, logo_light_url: "/haya-logo-transparent.png", logo_light_public_id: null },
+  brand: { site_name: "Haya", tagline: "Bespoke Bridal Couture & Fine Ornaments", logo_url: "/haya-logo-transparent.png", logo_public_id: null, logo_light_url: "/haya-logo-transparent.png", logo_light_public_id: null },
   contact: { email: null, phone: null, whatsapp: null, address: null, hours: null, map_url: null },
   social: { instagram: null, facebook: null, pinterest: null, youtube: null },
   home: {
@@ -25,7 +25,12 @@ export const DEFAULT_SETTINGS: SiteSettings = {
     featured_heading: "Featured Collections",
     products_heading: "Curated For You",
   },
-  booking: { workflow: "request", hold_minutes: 20, request_hold_hours: 48, buffer_days: 2, min_lead_days: 1, max_advance_days: 365, fees_paise: 0 },
+  booking: { workflow: "payment", hold_minutes: 20, request_hold_hours: 48, buffer_days: 0, min_lead_days: 1, max_advance_days: 365, fees_paise: 0 },
+  shipping: {
+    fee_paise: 0,
+    label: "Insured Shipping Across India",
+    estimated_days: "3-5 Business Days",
+  },
   product_services: { items: [] },
   email: { admin_notification_email: null },
 };
@@ -126,6 +131,7 @@ export const getFeaturedProducts = cache(async (limit = 8): Promise<ProductWithI
 
 export type ListingQuery = {
   collectionId?: string | null;
+  category?: string | null;
   sort?: string;
   minPaise?: number | null;
   maxPaise?: number | null;
@@ -144,14 +150,6 @@ export async function listProducts(qry: ListingQuery): Promise<{ items: ProductW
   const pageSize = qry.pageSize ?? 12;
   const page = Math.max(1, qry.page ?? 1);
 
-  let availableIds: string[] | null = null;
-  if (qry.start && qry.end) {
-    const { data, error } = await db.rpc("available_product_ids", { p_start: qry.start, p_end: qry.end });
-    if (error) return { items: [], total: 0, issue: classify(error) };
-    availableIds = ((data as unknown as string[]) ?? []).map((r) => (typeof r === "string" ? r : (r as { available_product_ids: string }).available_product_ids));
-    if (availableIds.length === 0) return { items: [], total: 0, issue: null };
-  }
-
   let query = db
     .from("products")
     .select(PRODUCT_CARD_SELECT, { count: "exact" })
@@ -163,7 +161,6 @@ export async function listProducts(qry: ListingQuery): Promise<{ items: ProductW
   if (qry.maxPaise != null) query = query.lte("rental_price_paise", qry.maxPaise);
   if (qry.sizes?.length) query = query.overlaps("sizes", qry.sizes);
   if (qry.colors?.length) query = query.overlaps("color_names", qry.colors);
-  if (availableIds) query = query.in("id", availableIds);
   if (qry.q) {
     const term = qry.q.replace(/[%,()]/g, " ").trim();
     if (term) query = query.or(`name.ilike.%${term}%,short_description.ilike.%${term}%`);

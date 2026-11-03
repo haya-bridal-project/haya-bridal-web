@@ -4,48 +4,70 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
-  Calendar,
   ShieldCheck,
   CheckCircle2,
   AlertCircle,
-  Clock,
+  Truck,
+  Scissors,
   ArrowRight,
 } from "lucide-react";
-import { formatINR, computeRentalPrice } from "@/lib/money";
-import { rentalEndDate, formatDate } from "@/lib/dates";
+import { formatINR } from "@/lib/money";
 import type { ProductWithImages, RentalOption, SiteSettings } from "@/lib/types";
 
 interface BookingCheckoutFormProps {
-  product: ProductWithImages & { product_rental_options: RentalOption[] };
+  product: ProductWithImages & { product_rental_options?: RentalOption[] };
   user: { id: string; email?: string | null };
   settings: SiteSettings;
-  initialDuration: number;
+  initialDuration?: number;
   initialSize: string;
   initialColor: string;
-  initialStart: string;
+  initialStart?: string;
+  initialIsCustom?: boolean;
+  initialBust?: string;
+  initialWaist?: string;
+  initialHips?: string;
+  initialShoulder?: string;
+  initialLength?: string;
+  initialCustomNotes?: string;
 }
 
 export function BookingCheckoutForm({
   product,
   user,
   settings,
-  initialDuration,
   initialSize,
   initialColor,
-  initialStart,
+  initialIsCustom = false,
+  initialBust = "",
+  initialWaist = "",
+  initialHips = "",
+  initialShoulder = "",
+  initialLength = "",
+  initialCustomNotes = "",
 }: BookingCheckoutFormProps) {
   const router = useRouter();
 
-  const [startDate, setStartDate] = useState(initialStart);
-  const [duration, setDuration] = useState(initialDuration);
+  const isOrnament = product.category === "ornament" || product.category === "ornaments";
+
+  // Product Selection States
   const [size, setSize] = useState(initialSize);
   const [color, setColor] = useState(initialColor);
+  const [isCustom, setIsCustom] = useState(initialIsCustom);
+  const [bust, setBust] = useState(initialBust);
+  const [waist, setWaist] = useState(initialWaist);
+  const [hips, setHips] = useState(initialHips);
+  const [shoulder, setShoulder] = useState(initialShoulder);
+  const [length, setLength] = useState(initialLength);
+  const [customNotes, setCustomNotes] = useState(initialCustomNotes);
 
+  // Customer Shipping & Delivery Details
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
-  const [eventDate, setEventDate] = useState("");
-  const [notes, setNotes] = useState("");
+  const [streetAddress, setStreetAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [stateName, setStateName] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [deliveryNotes, setDeliveryNotes] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -54,65 +76,86 @@ export function BookingCheckoutForm({
     product.product_images.find((img) => img.is_primary) ||
     product.product_images[0];
 
-  const priceBreakdown = computeRentalPrice({
-    basePricePaise: product.rental_price_paise,
-    baseDurationDays: product.rental_duration_days,
-    options: product.product_rental_options,
-    durationDays: duration,
-    depositPaise: product.deposit_paise,
-    feesPaise: settings.booking?.fees_paise || 0,
-  });
+  const pricePaise = product.price_paise ?? product.rental_price_paise;
 
-  const endDate = startDate ? rentalEndDate(startDate, duration) : null;
+  // Dynamic Shipping Calculation from Admin Settings (Zero GST)
+  const shippingSettings = settings?.shipping;
+  const activeShippingPaise = Number(shippingSettings?.fee_paise) || 0;
+  const shippingLabelText = shippingSettings?.label || "Insured Shipping Across India";
+  const totalPayablePaise = pricePaise + activeShippingPaise;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
-    if (!startDate) {
-      setErrorMsg("Please select a rental start date.");
+    if (!customerName.trim() || !phone.trim()) {
+      setErrorMsg("Please provide your full recipient name and contact phone number.");
       return;
     }
-    if (!customerName || !phone) {
-      setErrorMsg("Please provide your full name and contact phone number.");
+
+    if (!streetAddress.trim() || !city.trim() || !pincode.trim()) {
+      setErrorMsg("Please provide complete delivery address with PIN code.");
       return;
     }
 
     setLoading(true);
     try {
+      const fullAddress = `${streetAddress.trim()}, ${city.trim()}, ${stateName.trim()} - ${pincode.trim()}`;
+
+      // Formatted customization object
+      const customization = isOrnament
+        ? null
+        : {
+            custom_type: isCustom ? "custom_fit" : "standard",
+            standard_size: size,
+            bust_inches: bust || undefined,
+            waist_inches: waist || undefined,
+            hips_inches: hips || undefined,
+            shoulder_inches: shoulder || undefined,
+            length_inches: length || undefined,
+            custom_notes: customNotes || undefined,
+          };
+
+      const formattedNotesParts: string[] = [];
+      if (isCustom) {
+        formattedNotesParts.push(
+          `[Custom Sizing: Bust ${bust || "N/A"}", Waist ${waist || "N/A"}", Hips ${hips || "N/A"}", Shoulder ${shoulder || "N/A"}", Length ${length || "N/A"}"]`
+        );
+      } else {
+        formattedNotesParts.push(`[Size: ${size}]`);
+      }
+      if (customNotes) formattedNotesParts.push(`Customization: ${customNotes}`);
+      if (deliveryNotes) formattedNotesParts.push(`Delivery Note: ${deliveryNotes}`);
+
       const res = await fetch("/api/bookings/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           product_id: product.id,
-          start_date: startDate,
-          duration_days: duration,
-          size,
+          start_date: new Date().toISOString().split("T")[0],
+          duration_days: 1,
+          size: isCustom ? "Custom Fit" : size,
           color,
           name: customerName,
           email: user.email,
           phone,
-          address,
-          event_date: eventDate || null,
-          notes,
-          workflow: settings.booking?.workflow || "request",
+          address: fullAddress,
+          notes: formattedNotesParts.join(" | "),
+          workflow: "payment",
+          customization,
+          order_type: isOrnament ? "ornament" : "dress",
         }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to create reservation hold.");
+        throw new Error(data.error || "Failed to initialize order.");
       }
 
-      // If workflow is online payment, proceed to checkout page
-      if (settings.booking?.workflow === "payment") {
-        router.push(`/checkout/${data.reference}`);
-      } else {
-        // Request workflow: proceed directly to confirmation
-        router.push(`/booking/confirmation/${data.reference}`);
-      }
+      // Direct to Razorpay payment checkout
+      router.push(`/checkout/${data.reference}`);
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : "Booking could not be processed.");
+      setErrorMsg(err instanceof Error ? err.message : "Order could not be processed.");
     } finally {
       setLoading(false);
     }
@@ -120,114 +163,29 @@ export function BookingCheckoutForm({
 
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-      {/* Left Details Form */}
+      {/* Left Form: Delivery & Customization Review */}
       <div className="lg:col-span-7 space-y-6">
         
-        {/* Reservation Parameters Card */}
+        {/* Shipping Address Card */}
         <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-4">
-          <h2 className="font-serif text-xl text-[#2B211C] font-normal pb-3 border-b border-[#E8DDD1]">
-            1. Rental Dates & Size
-          </h2>
+          <div className="flex items-center gap-2 pb-3 border-b border-[#E8DDD1]">
+            <Truck className="w-5 h-5 text-[#B06F5E]" />
+            <h2 className="font-serif text-xl text-[#2B211C] font-normal">
+              1. Delivery / Shipping Address
+            </h2>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
-                Rental Start Date *
-              </label>
-              <input
-                type="date"
-                required
-                min={new Date().toISOString().split("T")[0]}
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
-                Duration (Days) *
-              </label>
-              <select
-                value={duration}
-                onChange={(e) => setDuration(parseInt(e.target.value, 10))}
-                className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
-              >
-                <option value={product.rental_duration_days}>
-                  {product.rental_duration_days} Days
-                </option>
-                {product.product_rental_options.map((opt) => (
-                  <option key={opt.duration_days} value={opt.duration_days}>
-                    {opt.duration_days} Days
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {startDate && endDate && (
-            <div className="p-3 bg-[#FAF6F0] rounded-xs border border-[#E8DDD1] flex items-center justify-between text-xs text-[#2B211C]">
-              <span>Rental Period:</span>
-              <span className="font-semibold text-[#B06F5E]">
-                {formatDate(startDate)} &rarr; {formatDate(endDate)}
-              </span>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-            {product.sizes.length > 0 && (
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
-                  Selected Size *
-                </label>
-                <select
-                  value={size}
-                  onChange={(e) => setSize(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
-                >
-                  {product.sizes.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {product.colors.length > 0 && (
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
-                  Selected Color
-                </label>
-                <select
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
-                >
-                  {product.colors.map((c) => (
-                    <option key={c.name} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Customer Fulfillment Card */}
-        <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-4">
-          <h2 className="font-serif text-xl text-[#2B211C] font-normal pb-3 border-b border-[#E8DDD1]">
-            2. Customer & Event Information
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
-                Full Name *
+                Recipient Full Name *
               </label>
               <input
                 type="text"
                 required
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Bride or groom name"
+                placeholder="Bride or Recipient name"
                 className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
               />
             </div>
@@ -247,27 +205,58 @@ export function BookingCheckoutForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
+              Flat / House No., Apartment &amp; Street Address *
+            </label>
+            <input
+              type="text"
+              required
+              value={streetAddress}
+              onChange={(e) => setStreetAddress(e.target.value)}
+              placeholder="e.g. 402, Royal Palms, MG Road"
+              className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
-                Account Email
+                City *
               </label>
               <input
-                type="email"
-                disabled
-                value={user.email || ""}
-                className="w-full px-3 py-2 text-xs bg-[#FAF6F0] border border-[#E8DDD1] rounded-sm text-[#7A6A5F]"
+                type="text"
+                required
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. Mumbai / Kochi"
+                className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
               />
             </div>
 
             <div>
               <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
-                Event Date (Optional)
+                State
               </label>
               <input
-                type="date"
-                value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
+                type="text"
+                value={stateName}
+                onChange={(e) => setStateName(e.target.value)}
+                placeholder="e.g. Kerala"
+                className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
+                Postal PIN Code *
+              </label>
+              <input
+                type="text"
+                required
+                value={pincode}
+                onChange={(e) => setPincode(e.target.value)}
+                placeholder="6-digit PIN code"
                 className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
               />
             </div>
@@ -275,126 +264,238 @@ export function BookingCheckoutForm({
 
           <div>
             <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
-              Delivery / Studio Fitting Address
+              Delivery Notes / Landmark (Optional)
             </label>
             <input
               type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="City, Area, Pincode"
-              className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
-              Custom Measurements & Alteration Notes
-            </label>
-            <textarea
-              rows={2}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Mention your blouse bust size, height for lehenga length, or trial date preference..."
+              value={deliveryNotes}
+              onChange={(e) => setDeliveryNotes(e.target.value)}
+              placeholder="e.g. Near St. Mary Church, Gate 2"
               className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
             />
           </div>
         </div>
+
+        {/* Customization Details for Dress Items */}
+        {!isOrnament && (
+          <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E8DDD1]">
+              <div className="flex items-center gap-2">
+                <Scissors className="w-5 h-5 text-[#B06F5E]" />
+                <h2 className="font-serif text-xl text-[#2B211C] font-normal">
+                  2. Dress Customization &amp; Fit
+                </h2>
+              </div>
+              <span className="text-[11px] font-sans text-[#B06F5E] bg-[#FAF6F0] px-2 py-0.5 rounded-xs border border-[#E8DDD1]">
+                {isCustom ? "Custom Fit" : `Standard Size: ${size}`}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-xs text-[#2B211C] cursor-pointer">
+                <input
+                  type="radio"
+                  name="custom_choice"
+                  checked={!isCustom}
+                  onChange={() => setIsCustom(false)}
+                  className="accent-[#B06F5E]"
+                />
+                <span>Standard Size ({size})</span>
+              </label>
+
+              <label className="flex items-center gap-2 text-xs text-[#2B211C] cursor-pointer">
+                <input
+                  type="radio"
+                  name="custom_choice"
+                  checked={isCustom}
+                  onChange={() => setIsCustom(true)}
+                  className="accent-[#B06F5E]"
+                />
+                <span className="font-medium text-[#B06F5E]">
+                  Custom Measurements
+                </span>
+              </label>
+            </div>
+
+            {isCustom && (
+              <div className="p-4 bg-[#FAF6F0]/60 border border-[#E8DDD1] rounded-sm space-y-3">
+                <p className="text-[11px] text-[#7A6A5F]">
+                  Enter measurements in inches below. Our master craftsmen will stitch this bridal piece precisely for you.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[10px] uppercase text-[#7A6A5F] mb-1">Bust (in)</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      placeholder="e.g. 34"
+                      value={bust}
+                      onChange={(e) => setBust(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#E8DDD1] rounded-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase text-[#7A6A5F] mb-1">Waist (in)</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      placeholder="e.g. 28"
+                      value={waist}
+                      onChange={(e) => setWaist(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#E8DDD1] rounded-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase text-[#7A6A5F] mb-1">Hips (in)</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      placeholder="e.g. 38"
+                      value={hips}
+                      onChange={(e) => setHips(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#E8DDD1] rounded-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase text-[#7A6A5F] mb-1">Shoulder (in)</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      placeholder="e.g. 14"
+                      value={shoulder}
+                      onChange={(e) => setShoulder(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#E8DDD1] rounded-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase text-[#7A6A5F] mb-1">Length (in)</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      placeholder="e.g. 42"
+                      value={length}
+                      onChange={(e) => setLength(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#E8DDD1] rounded-sm"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase text-[#7A6A5F] mb-1">
+                    Special Tailoring Notes (Neckline, Sleeves, Margins)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={customNotes}
+                    onChange={(e) => setCustomNotes(e.target.value)}
+                    placeholder="e.g. Sweetheart neck, elbow-length sleeves, extra margin."
+                    className="w-full px-2.5 py-1.5 text-xs bg-white border border-[#E8DDD1] rounded-sm resize-none"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {errorMsg && (
+          <div className="p-3.5 bg-red-50 border border-red-200 rounded-sm text-xs text-red-800 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
       </div>
 
-      {/* Right Order Summary & Pricing Breakdown */}
+      {/* Right Column: Order Summary & Pay Action */}
       <div className="lg:col-span-5 space-y-6">
-        <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-sm sticky top-28">
-          <h2 className="font-serif text-xl text-[#2B211C] font-normal pb-4 border-b border-[#E8DDD1]">
-            Booking Summary
+        <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-6 sticky top-24">
+          <h2 className="font-serif text-xl text-[#2B211C] font-normal pb-3 border-b border-[#E8DDD1]">
+            Order Summary
           </h2>
 
-          {/* Outfit Thumbnail & Name */}
-          <div className="flex gap-4 py-4 border-b border-[#E8DDD1]">
+          {/* Product Thumbnail & Details */}
+          <div className="flex gap-4 items-start">
             <div className="relative aspect-[3/4] w-20 rounded-xs overflow-hidden bg-[#F4ECE1] border border-[#E8DDD1] shrink-0">
               {primaryImage?.url ? (
-                <Image src={primaryImage.url} alt="" fill className="object-cover" sizes="80px" />
+                <Image
+                  src={primaryImage.url}
+                  alt={product.name}
+                  fill
+                  className="object-cover"
+                  sizes="80px"
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-[10px] text-[#7A6A5F]">
                   Haya
                 </div>
               )}
             </div>
-            <div className="flex flex-col justify-center">
-              <span className="font-serif text-base text-[#2B211C] leading-snug">
+
+            <div className="flex-1 min-w-0">
+              <span className="text-[10px] font-sans font-semibold uppercase tracking-wider text-[#B06F5E] block">
+                {isOrnament ? "Fine Ornament" : "Bridal Couture"}
+              </span>
+              <h3 className="font-serif text-base text-[#2B211C] font-normal truncate mt-0.5">
                 {product.name}
-              </span>
-              <span className="text-xs text-[#7A6A5F] mt-1">
-                {duration} Days Rental • Size: {size || "Standard"}
-              </span>
-              {color && (
-                <span className="text-xs text-[#7A6A5F]">Color: {color}</span>
-              )}
+              </h3>
+              <p className="text-xs text-[#7A6A5F] mt-1">
+                Size: <strong className="text-[#2B211C]">{isCustom ? "Custom Fit" : size}</strong>
+                {color && <> • Color: <strong className="text-[#2B211C]">{color}</strong></>}
+              </p>
             </div>
           </div>
 
           {/* Price Breakdown */}
-          {priceBreakdown && (
-            <div className="py-4 space-y-2.5 text-xs text-[#7A6A5F] border-b border-[#E8DDD1]">
-              <div className="flex justify-between">
-                <span>Rental Charge ({duration} Days)</span>
-                <span className="text-[#2B211C] font-medium font-sans">
-                  {formatINR(priceBreakdown.rental_paise)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Refundable Security Deposit</span>
-                <span className="text-[#2B211C] font-medium font-sans">
-                  {formatINR(priceBreakdown.deposit_paise)}
-                </span>
-              </div>
-              {priceBreakdown.fees_paise > 0 && (
-                <div className="flex justify-between">
-                  <span>Service & Fitting Fee</span>
-                  <span className="text-[#2B211C] font-medium font-sans">
-                    {formatINR(priceBreakdown.fees_paise)}
-                  </span>
-                </div>
-              )}
-              <div className="flex justify-between text-emerald-700">
-                <span>Professional Sanitization & Fitting</span>
-                <span>Included (Free)</span>
-              </div>
+          <div className="space-y-2.5 pt-4 border-t border-[#E8DDD1] text-xs">
+            <div className="flex justify-between text-[#7A6A5F]">
+              <span>Product Price</span>
+              <span className="font-medium text-[#2B211C]">{formatINR(pricePaise)}</span>
             </div>
-          )}
-
-          {/* Total Payable */}
-          {priceBreakdown && (
-            <div className="py-4 flex items-baseline justify-between border-b border-[#E8DDD1]">
-              <span className="font-serif text-lg text-[#2B211C]">Total Payable</span>
-              <span className="font-sans text-2xl font-bold text-[#B06F5E]">
-                {formatINR(priceBreakdown.total_paise)}
+            {!isOrnament && isCustom && (
+              <div className="flex justify-between text-[#7A6A5F]">
+                <span>Custom Tailoring / Stitching</span>
+                <span className="font-medium text-emerald-700">Complimentary (₹0)</span>
+              </div>
+            )}
+            <div className="flex justify-between text-[#7A6A5F]">
+              <span>{shippingLabelText}</span>
+              <span className="font-medium text-[#2B211C]">
+                {formatINR(activeShippingPaise)}
               </span>
             </div>
-          )}
 
-          {/* Error Message */}
-          {errorMsg && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-sm flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
+            <div className="pt-3 border-t border-[#E8DDD1] flex justify-between items-baseline">
+              <span className="font-serif text-base text-[#2B211C]">Total Payable</span>
+              <span className="font-sans text-2xl font-semibold text-[#B06F5E]">
+                {formatINR(totalPayablePaise)}
+              </span>
             </div>
-          )}
-
-          {/* Submit Action */}
-          <div className="mt-6">
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 px-6 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-xs font-medium tracking-wide uppercase rounded-sm shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              <span>{loading ? "Holding Reservation..." : "Proceed to Confirmation"}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
           </div>
 
-          <div className="mt-4 flex items-center justify-center gap-2 text-[11px] text-[#7A6A5F]">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Guaranteed Date Reservation • Museum Cleaned</span>
+          {/* Payment Submit Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3.5 px-6 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-xs font-medium tracking-wider uppercase rounded-sm transition-all shadow-sm hover:shadow text-center flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <span>Processing...</span>
+            ) : (
+              <>
+                <span>Pay {formatINR(totalPayablePaise)}</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+
+          <div className="space-y-2 text-[11px] text-[#7A6A5F] pt-2">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+              <span>Verified Secure 256-Bit SSL Checkout</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Truck className="w-4 h-4 text-[#B06F5E] shrink-0" />
+              <span>Insured delivery with real-time shipment updates</span>
+            </div>
           </div>
         </div>
       </div>

@@ -111,19 +111,19 @@ export async function emailBookingRequested(b: Booking) {
     eventType: "booking_request_received",
     to: b.customer_email,
     toName: b.customer_name,
-    subject: `Booking request ${b.reference} received`,
+    subject: `Order request ${b.reference} received`,
     relatedType: "booking",
     relatedId: b.id,
     html: layout({
-      preheader: "Your booking request has been received.",
-      heading: "Booking request received",
-      intro: `Dear ${b.customer_name}, we have received your rental request. Our team will review availability and confirm with you shortly. Your booking is not confirmed until you hear from us.`,
+      preheader: "Your order request has been received.",
+      heading: "Order request received",
+      intro: `Dear ${b.customer_name}, we have received your order request. Our team will review your customization details and confirm with you shortly.`,
       rows: bookingRows(toData(b)),
-      cta: { label: "View booking", href: `${c.site}/account/bookings/${b.reference}` },
+      cta: { label: "View order", href: `${c.site}/account/bookings/${b.reference}` },
       contact: c.contact,
     }),
   });
-  await notifyAdminBooking(b, "New booking request");
+  await notifyAdminBooking(b, "New order request");
 }
 
 export async function notifyAdminBooking(b: Booking, title: string) {
@@ -153,22 +153,22 @@ export async function emailBookingConfirmed(b: Booking, viaPayment: boolean) {
     eventType: viaPayment ? "payment_confirmation" : "booking_confirmation",
     to: b.customer_email,
     toName: b.customer_name,
-    subject: viaPayment ? `Payment received, booking ${b.reference} confirmed` : `Booking ${b.reference} confirmed`,
+    subject: viaPayment ? `Payment received, order ${b.reference} confirmed` : `Order ${b.reference} confirmed`,
     relatedType: "booking",
     relatedId: b.id,
     html: layout({
-      preheader: "Your Haya rental is confirmed.",
-      heading: "Your booking is confirmed",
+      preheader: "Your Haya order is confirmed.",
+      heading: "Your order is confirmed",
       intro: viaPayment
-        ? `Dear ${b.customer_name}, we have verified your payment of ${formatINR(b.total_paise)} and your rental is confirmed.`
-        : `Dear ${b.customer_name}, your rental has been confirmed by our team.`,
+        ? `Dear ${b.customer_name}, we have verified your payment of ${formatINR(b.total_paise)} and your order is confirmed.`
+        : `Dear ${b.customer_name}, your order has been confirmed by our team.`,
       rows: bookingRows(toData(b)),
-      cta: { label: "View booking", href: `${c.site}/account/bookings/${b.reference}` },
-      outro: "We will contact you with pickup details before your rental date.",
+      cta: { label: "View order", href: `${c.site}/account/bookings/${b.reference}` },
+      outro: "We will contact you with shipping and tracking details as your bespoke order is prepared.",
       contact: c.contact,
     }),
   });
-  if (viaPayment) await notifyAdminBooking(b, "Paid booking confirmed");
+  if (viaPayment) await notifyAdminBooking(b, "Paid order confirmed");
 }
 
 export async function emailPaymentFailed(b: Booking, paymentId: string) {
@@ -184,7 +184,7 @@ export async function emailPaymentFailed(b: Booking, paymentId: string) {
     html: layout({
       preheader: "Your payment did not go through.",
       heading: "Payment not completed",
-      intro: `Dear ${b.customer_name}, your payment attempt for booking ${b.reference} was not successful. No booking has been confirmed. You may try again while your reservation hold is active.`,
+      intro: `Dear ${b.customer_name}, your payment attempt for order ${b.reference} was not successful. You may try again to complete checkout.`,
       rows: bookingRows(toData(b)),
       cta: { label: "Return to checkout", href: `${c.site}/checkout/${b.reference}` },
       contact: c.contact,
@@ -195,8 +195,8 @@ export async function emailPaymentFailed(b: Booking, paymentId: string) {
 export async function emailBookingStatusChanged(b: Booking, note?: string | null) {
   const c = await ctx();
   const map: Partial<Record<Booking["status"], { subject: string; heading: string; intro: string }>> = {
-    cancelled: { subject: `Booking ${b.reference} cancelled`, heading: "Booking cancelled", intro: `Dear ${b.customer_name}, your booking has been cancelled.` },
-    rejected: { subject: `Booking request ${b.reference} could not be accepted`, heading: "Booking request update", intro: `Dear ${b.customer_name}, unfortunately we are unable to accept this booking request.` },
+    cancelled: { subject: `Order ${b.reference} cancelled`, heading: "Order cancelled", intro: `Dear ${b.customer_name}, your order has been cancelled.` },
+    rejected: { subject: `Order request ${b.reference} could not be accepted`, heading: "Order request update", intro: `Dear ${b.customer_name}, unfortunately we are unable to accept this order request.` },
   };
   if (b.status === "confirmed") return emailBookingConfirmed(b, false);
   const m = map[b.status];
@@ -227,7 +227,7 @@ export async function emailRefundUpdate(b: Booking, refund: { id: string; status
       preheader: "Refund update",
       heading: "Refund update",
       intro: `Dear ${b.customer_name}, here is the latest status of your refund.`,
-      rows: [["Booking reference", b.reference], ["Refund amount", formatINR(refund.amount_paise)], ["Refund status", refund.status], ["Refund reference", refund.id]],
+      rows: [["Order reference", b.reference], ["Refund amount", formatINR(refund.amount_paise)], ["Refund status", refund.status], ["Refund reference", refund.id]],
       outro: "Refunds are processed by Razorpay to your original payment method. Bank timelines may vary.",
       contact: c.contact,
     }),

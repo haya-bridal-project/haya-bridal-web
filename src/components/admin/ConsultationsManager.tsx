@@ -15,6 +15,7 @@ import {
   Search,
 } from "lucide-react";
 import { formatDate } from "@/lib/dates";
+import { ConfirmDialogModal } from "@/components/admin/ConfirmDialogModal";
 
 export interface ConsultationItem {
   id: string;
@@ -48,6 +49,10 @@ export function ConsultationsManager({
   const [adminNote, setAdminNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "detail">("list");
+
+  // Delete modal state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const filtered = consultations.filter((item) => {
     const matchesStatus =
@@ -103,22 +108,23 @@ export function ConsultationsManager({
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this appointment request?"))
-      return;
+  const handleConfirmDelete = async () => {
+    if (!selectedItem) return;
+    setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/consultations?id=${id}`, {
+      const res = await fetch(`/api/admin/consultations?id=${selectedItem.id}`, {
         method: "DELETE",
       });
       if (res.ok) {
-        const next = consultations.filter((c) => c.id !== id);
+        const next = consultations.filter((c) => c.id !== selectedItem.id);
         setConsultations(next);
-        if (selectedItem?.id === id) {
-          setSelectedItem(next[0] || null);
-        }
+        setSelectedItem(next[0] || null);
+        setDeleteModalOpen(false);
       }
     } catch (e) {
       console.error("Failed to delete", e);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -340,7 +346,8 @@ export function ConsultationsManager({
                     Cancel
                   </button>
                   <button
-                    onClick={() => handleDelete(selectedItem.id)}
+                    type="button"
+                    onClick={() => setDeleteModalOpen(true)}
                     className="p-1 text-red-600 hover:text-red-800 rounded-xs hover:bg-red-50"
                     title="Delete record"
                   >
@@ -370,45 +377,12 @@ export function ConsultationsManager({
                       Preferred Time Slot
                     </span>
                     <span className="text-xs font-medium text-[#2B211C]">
-                      {selectedItem.preferred_time || "Flexible / Unspecified"}
+                      {selectedItem.preferred_time || "Flexible"}
                     </span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2.5">
-                  {selectedItem.mode === "virtual" ? (
-                    <Video className="w-4 h-4 text-[#B06F5E] shrink-0" />
-                  ) : (
-                    <Store className="w-4 h-4 text-[#B06F5E] shrink-0" />
-                  )}
-                  <div>
-                    <span className="text-[10px] uppercase font-semibold text-[#7A6A5F] block">
-                      Fitting Mode
-                    </span>
-                    <span className="text-xs font-medium text-[#2B211C] capitalize">
-                      {selectedItem.mode === "virtual"
-                        ? "Virtual Video Consultation"
-                        : "In-Store Boutique Trial"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2.5">
-                  <Phone className="w-4 h-4 text-[#B06F5E] shrink-0" />
-                  <div className="min-w-0">
-                    <span className="text-[10px] uppercase font-semibold text-[#7A6A5F] block">
-                      Client Phone
-                    </span>
-                    <a
-                      href={`tel:${selectedItem.phone}`}
-                      className="text-xs text-[#2B211C] hover:underline truncate block font-medium"
-                    >
-                      {selectedItem.phone}
-                    </a>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2.5 sm:col-span-2">
                   <Mail className="w-4 h-4 text-[#B06F5E] shrink-0" />
                   <div className="min-w-0">
                     <span className="text-[10px] uppercase font-semibold text-[#7A6A5F] block">
@@ -416,27 +390,42 @@ export function ConsultationsManager({
                     </span>
                     <a
                       href={`mailto:${selectedItem.email}`}
-                      className="text-xs text-[#2B211C] hover:underline truncate block font-medium"
+                      className="text-xs text-[#2B211C] hover:underline truncate block"
                     >
                       {selectedItem.email}
                     </a>
                   </div>
                 </div>
+
+                <div className="flex items-center gap-2.5">
+                  <Phone className="w-4 h-4 text-[#B06F5E] shrink-0" />
+                  <div>
+                    <span className="text-[10px] uppercase font-semibold text-[#7A6A5F] block">
+                      Telephone
+                    </span>
+                    <a
+                      href={`tel:${selectedItem.phone}`}
+                      className="text-xs text-[#2B211C] hover:underline"
+                    >
+                      {selectedItem.phone}
+                    </a>
+                  </div>
+                </div>
               </div>
 
-              {/* Client Notes / Requests */}
+              {/* Message Content */}
               {selectedItem.message && (
                 <div>
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-[#7A6A5F] mb-2">
-                    Bride&apos;s Preferences &amp; Message
+                    Client Vision &amp; Notes
                   </h3>
-                  <div className="p-4 bg-white border border-[#E8DDD1] rounded-sm text-xs text-[#2B211C] leading-relaxed whitespace-pre-wrap">
+                  <div className="p-4 bg-white border border-[#E8DDD1] rounded-sm text-xs text-[#2B211C] leading-relaxed">
                     {selectedItem.message}
                   </div>
                 </div>
               )}
 
-              {/* Internal Stylist Notes */}
+              {/* Staff Notes */}
               <div>
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-[#7A6A5F] mb-2">
                   Stylist Notes &amp; Measurements
@@ -466,6 +455,23 @@ export function ConsultationsManager({
           )}
         </div>
       </div>
+
+      {/* Delete Appointment Confirmation Modal */}
+      <ConfirmDialogModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Appointment Record"
+        message={
+          selectedItem
+            ? `Are you sure you want to delete the appointment request for "${selectedItem.name}"?`
+            : "Are you sure you want to delete this appointment request?"
+        }
+        confirmLabel="Yes, Delete Record"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={deleting}
+      />
     </div>
   );
 }

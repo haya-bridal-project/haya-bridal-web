@@ -10,24 +10,24 @@ export default function TermsPage() {
       defaultContent={
         <div className="space-y-6 font-light text-[#2B211C]">
           <p>
-            Welcome to Haya Premium Bridal Rental. By accessing our platform, reserving outfits, or visiting our boutique studio, you agree to comply with and be bound by the following terms and conditions.
+            Welcome to Haya Bridal Couture. By accessing our platform, ordering handcrafted bridal wear, or purchasing fine ornaments, you agree to comply with and be bound by the following terms and conditions.
           </p>
           <section className="space-y-2">
-            <h2 className="font-serif text-lg text-[#2B211C]">1. Rental Ownership</h2>
+            <h2 className="font-serif text-lg text-[#2B211C]">1. Bespoke Orders &amp; Craftsmanship</h2>
             <p>
-              All garments, accessories, packaging, and hangers provided by Haya remain the exclusive property of Haya Premium Bridal Rental. The transaction represents a temporary rental license for the specified dates and cannot be transferred or subleased.
+              Every bridal lehenga and gown is handcrafted with authentic embroidery techniques (zardozi, kundan, sequins, and threadwork). Slight artisanal variations in weave and handwork celebrate the uniqueness of bespoke couture.
             </p>
           </section>
           <section className="space-y-2">
-            <h2 className="font-serif text-lg text-[#2B211C]">2. Identity & Verification</h2>
+            <h2 className="font-serif text-lg text-[#2B211C]">2. Tailoring &amp; Measurements</h2>
             <p>
-              Prior to garment dispatch or handover, clients may be required to verify their government-issued identity (Aadhaar / Passport) to validate rental reservations and security coverage.
+              Custom fitting measurements provided by clients are verified by our master tailors prior to cutting and stitching. Clients are advised to ensure accurate silhouette dimensions during consultation and order placement.
             </p>
           </section>
           <section className="space-y-2">
-            <h2 className="font-serif text-lg text-[#2B211C]">3. Late Returns</h2>
+            <h2 className="font-serif text-lg text-[#2B211C]">3. Dispatch &amp; Delivery</h2>
             <p>
-              Late returns impact consecutive brides who have reserved the outfit. A late fee equal to the daily rental rate may apply for every 24-hour delay unless authorized in writing by the Haya concierge.
+              All orders are shipped via insured express courier across India. Delivery timeframes and dispatch tracking are communicated promptly via WhatsApp and email.
             </p>
           </section>
         </div>

@@ -53,7 +53,7 @@ export function SizeGuideModal({
               {sizeGuide?.name || "Bridal Fitting & Size Guide"}
             </h3>
             <p className="text-xs text-[#7A6A5F] mt-0.5">
-              All measurements are in inches. Custom fittings are provided for all rentals.
+              All measurements are in inches. Custom fittings and bespoke measurements are provided for all bridal couture outfits.
             </p>
           </div>
           <button
@@ -103,7 +103,7 @@ export function SizeGuideModal({
             Personal Fitting Assistance
           </strong>
           {sizeGuide?.notes ||
-            "Every bridal rental includes a complimentary fitting session with our in-house master tailor. Slight alteration adjustments to waist, blouse hooks, and dupatta draping are done free of charge prior to your rental date."}
+            "Every bespoke bridal order includes complimentary tailoring adjustments with our in-house master tailor. Fitting adjustments to waist, blouse hooks, and dupatta styling are personalized for your wedding day."}
         </div>
       </div>
     </div>

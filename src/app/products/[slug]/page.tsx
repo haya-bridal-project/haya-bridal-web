@@ -25,11 +25,11 @@ export async function generateMetadata(props: ProductPageProps): Promise<Metadat
   if (!product) return { title: "Product Not Found — Haya" };
 
   return {
-    title: `${product.seo_title || product.name} — Haya Premium Bridal Rental`,
+    title: `${product.seo_title || product.name} — Haya Bridal Couture & Fine Ornaments`,
     description:
       product.seo_description ||
       product.short_description ||
-      `Rent ${product.name} from Haya Premium Bridal Rental.`,
+      `Order and customize ${product.name} from Haya Bridal Couture.`,
   };
 }
 
@@ -83,44 +83,36 @@ export default async function ProductDetailPage(props: ProductPageProps) {
         </nav>
 
         {/* Main Product Showcase Grid (Desktop 2-col, Mobile stacked) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-start">
-          {/* Gallery Column (Left matching Reference 05) */}
-          <div className="lg:col-span-7">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+          {/* Gallery Column (Left) - Sticky at viewport height */}
+          <div className="lg:col-span-6 xl:col-span-6 lg:sticky lg:top-24 self-start">
             <ProductDetailGallery
               images={product.product_images}
               productName={product.name}
             />
-
-            {/* Additional Garment Specifications / Care accordion or card */}
-            {(product.care_instructions || product.rental_conditions) && (
-              <div className="mt-10 p-6 bg-[#FFFDF9] rounded-sm border border-[#E8DDD1] text-xs text-[#7A6A5F] space-y-4">
-                {product.care_instructions && (
-                  <div>
-                    <h4 className="font-serif text-sm text-[#2B211C] mb-1">
-                      Garment & Embroidery Care
-                    </h4>
-                    <p className="leading-relaxed font-light">
-                      {product.care_instructions}
-                    </p>
-                  </div>
-                )}
-                {product.rental_conditions && (
-                  <div className="pt-3 border-t border-[#E8DDD1]">
-                    <h4 className="font-serif text-sm text-[#2B211C] mb-1">
-                      Rental Terms & Fitting
-                    </h4>
-                    <p className="leading-relaxed font-light">
-                      {product.rental_conditions}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
-          {/* Booking & Details Column (Right matching Reference 05) */}
-          <div className="lg:col-span-5 bg-[#FFFDF9] lg:bg-transparent p-6 sm:p-8 lg:p-0 rounded-sm lg:rounded-none border lg:border-0 border-[#E8DDD1]">
-            <ProductBookingWidget product={product} />
+          {/* Booking & Details Column (Right) - Scrolls freely */}
+          <div className="lg:col-span-6 xl:col-span-6 space-y-8 bg-[#FFFDF9] lg:bg-transparent p-6 sm:p-8 lg:p-0 rounded-sm lg:rounded-none border lg:border-0 border-[#E8DDD1]">
+            <ProductBookingWidget
+              product={product}
+              shipping={settings.shipping}
+              boutiquePhone={settings.contact?.whatsapp || settings.contact?.phone || "+91 98765 43210"}
+            />
+
+            {/* Additional Garment Specifications / Care card */}
+            {product.care_instructions && (
+              <div className="p-6 bg-[#FFFDF9] rounded-sm border border-[#E8DDD1] text-xs text-[#7A6A5F] space-y-4 shadow-xs">
+                <div>
+                  <h4 className="font-serif text-sm text-[#2B211C] mb-1">
+                    Garment &amp; Embroidery Care
+                  </h4>
+                  <p className="leading-relaxed font-light">
+                    {product.care_instructions}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

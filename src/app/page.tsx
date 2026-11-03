@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Package } from "lucide-react";
 import {
   getSiteSettings,
   getHeroSlides,
@@ -75,7 +75,7 @@ export default async function HomePage() {
                   Curated Catalog
                 </span>
                 <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl text-[#2B211C] font-normal tracking-tight mt-1">
-                  {settings.home?.featured_heading || "Featured Collections"}
+                  {settings.home?.featured_heading || "Featured Creations"}
                 </h2>
               </div>
               <Link
@@ -95,23 +95,23 @@ export default async function HomePage() {
                 ))}
               </div>
             ) : (
-              /* Clean empty state as required by prompt when DB is freshly initialized */
+              /* Clean empty state */
               <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-12 text-center max-w-xl mx-auto shadow-xs">
                 <div className="w-12 h-12 rounded-full bg-[#F4ECE1] text-[#B06F5E] flex items-center justify-center mx-auto mb-4">
-                  <Sparkles className="w-5 h-5 stroke-[1.5]" />
+                  <Package className="w-5 h-5 stroke-[1.5]" />
                 </div>
                 <h3 className="font-serif text-xl text-[#2B211C] mb-2 font-normal">
                   Bridal Catalog Preparing
                 </h3>
                 <p className="text-xs text-[#7A6A5F] max-w-sm mx-auto leading-relaxed font-sans mb-6">
-                  The Haya bridal collection is being curated. Authentic designer ensembles and rental slots will appear as soon as they are published by our stylists.
+                  The Haya bridal collection is being curated. Authentic designer dresses and fine ornaments will appear as soon as they are published by our stylists.
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                   <Link
-                    href="/consultation"
+                    href="/enquiry"
                     className="inline-flex items-center justify-center px-5 py-2.5 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-xs font-medium tracking-wide rounded-sm"
                   >
-                    Book Private Consultation
+                    Submit an Enquiry
                   </Link>
                   <Link
                     href="/admin"
@@ -132,16 +132,16 @@ export default async function HomePage() {
               The Haya Promise
             </span>
             <h2 className="font-serif text-2xl sm:text-3xl text-[#2B211C] max-w-xl mx-auto font-normal mt-2 mb-4">
-              Luxury Bridal Elegance Without the Permanent Commitment
+              Bespoke Bridal Couture & Handcrafted Ornaments
             </h2>
             <p className="text-xs sm:text-sm text-[#7A6A5F] max-w-2xl mx-auto leading-relaxed mb-8">
-              Every outfit in our rental vault is preserved with museum-grade care, customized to your measurements, professionally dry cleaned, and delivered right on time for your special moment.
+              Every bridal dress is crafted with museum-grade care and personalized to your exact custom measurements. Seamless online payment via Razorpay, strictly zero COD, and secure doorstep delivery.
             </p>
             <Link
               href="/how-it-works"
               className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-[#2B211C] hover:text-[#B06F5E] border-b border-[#2B211C] hover:border-[#B06F5E] pb-0.5 transition-colors"
             >
-              <span>Discover Our Rental Process</span>
+              <span>Discover Our Bespoke Process</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>

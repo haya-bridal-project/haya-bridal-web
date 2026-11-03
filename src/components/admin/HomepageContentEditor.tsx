@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Plus, Edit2, Trash2, Eye, CheckCircle2, AlertCircle } from "lucide-react";
 import { CloudinaryUploader, type UploadedAsset } from "@/components/admin/CloudinaryUploader";
+import { ConfirmDialogModal } from "@/components/admin/ConfirmDialogModal";
 import type { HeroSlide, SiteSettings } from "@/lib/types";
 
 interface HomepageContentEditorProps {
@@ -22,13 +23,17 @@ export function HomepageContentEditor({
   const [editingSlide, setEditingSlide] = useState<Partial<HeroSlide> | null>(null);
   const [slideAssets, setSlideAssets] = useState<UploadedAsset[]>([]);
 
+  // Delete modal state
+  const [deleteSlideModalOpen, setDeleteSlideModalOpen] = useState(false);
+  const [slideToDelete, setSlideToDelete] = useState<HeroSlide | null>(null);
+  const [deletingSlide, setDeletingSlide] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState(false);
 
   const startCreateSlide = () => {
     setEditingSlide({
-      eyebrow: "PREMIUM BRIDAL RENTAL",
+      eyebrow: "BESPOKE BRIDAL COUTURE & FINE ORNAMENTS",
       heading: "Grace for Every Occasion",
       body: "Handcrafted elegance. Curated styles. Make your special moments unforgettable.",
       cta_label: "Explore Collections",
@@ -73,18 +78,25 @@ export function HomepageContentEditor({
     }
   };
 
-  const handleDeleteSlide = async (slideId: string) => {
-    if (!confirm("Are you sure you want to delete this hero slide?")) return;
+  const handleConfirmDeleteSlide = async () => {
+    if (!slideToDelete) return;
+    setDeletingSlide(true);
     try {
       const res = await fetch("/api/admin/homepage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "delete_slide", slideId }),
+        body: JSON.stringify({ action: "delete_slide", slideId: slideToDelete.id }),
       });
       if (res.ok) {
-        setSlides(slides.filter((s) => s.id !== slideId));
+        setSlides(slides.filter((s) => s.id !== slideToDelete.id));
+        setDeleteSlideModalOpen(false);
+        setSlideToDelete(null);
       }
-    } catch {}
+    } catch (err) {
+      console.error("Failed to delete slide", err);
+    } finally {
+      setDeletingSlide(false);
+    }
   };
 
   const handleSaveSettings = async () => {
@@ -141,9 +153,7 @@ export function HomepageContentEditor({
         </div>
       )}
 
-
-
-      {/* 2. Hero Slides Management */}
+      {/* Hero Slides Management */}
       <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-5">
         <div className="flex items-center justify-between pb-3 border-b border-[#E8DDD1]">
           <div>
@@ -177,7 +187,7 @@ export function HomepageContentEditor({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
-                  Eyebrow (Default: "PREMIUM BRIDAL RENTAL")
+                  Eyebrow
                 </label>
                 <input
                   type="text"
@@ -321,8 +331,11 @@ export function HomepageContentEditor({
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleDeleteSlide(s.id)}
-                  className="p-1.5 text-[#7A6A5F] hover:text-red-600"
+                  onClick={() => {
+                    setSlideToDelete(s);
+                    setDeleteSlideModalOpen(true);
+                  }}
+                  className="p-1.5 text-[#7A6A5F] hover:text-red-600 transition-colors"
                   title="Delete slide"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -332,6 +345,26 @@ export function HomepageContentEditor({
           ))}
         </div>
       </div>
+
+      {/* Delete Slide Confirmation Modal */}
+      <ConfirmDialogModal
+        isOpen={deleteSlideModalOpen}
+        onClose={() => {
+          setDeleteSlideModalOpen(false);
+          setSlideToDelete(null);
+        }}
+        onConfirm={handleConfirmDeleteSlide}
+        title="Delete Hero Slide"
+        message={
+          slideToDelete
+            ? `Are you sure you want to remove the hero carousel slide "${slideToDelete.heading}"? This will immediately remove it from your storefront home page.`
+            : "Are you sure you want to delete this slide?"
+        }
+        confirmLabel="Yes, Delete Slide"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={deletingSlide}
+      />
     </div>
   );
 }

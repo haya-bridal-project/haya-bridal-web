@@ -8,7 +8,8 @@ import {
   type UploadedAsset,
 } from "@/components/admin/CloudinaryUploader";
 import { paiseToRupeesInput } from "@/lib/money";
-import { AlertCircle, CheckCircle2, Trash2, Plus, ArrowLeft } from "lucide-react";
+import { ConfirmDialogModal } from "@/components/admin/ConfirmDialogModal";
+import { AlertCircle, CheckCircle2, Trash2, Plus, ArrowLeft, Scissors, Gem } from "lucide-react";
 
 interface ProductFormProps {
   initialProduct?: any;
@@ -22,19 +23,29 @@ export function ProductForm({
   const router = useRouter();
   const isEditing = !!initialProduct?.id;
 
+  const [category, setCategory] = useState<"dress" | "ornament">(
+    initialProduct?.category === "ornament" || initialProduct?.category === "ornaments"
+      ? "ornament"
+      : "dress"
+  );
+  const [allowCustomization, setAllowCustomization] = useState(
+    initialProduct ? initialProduct.allow_customization !== false : true
+  );
+
   const [name, setName] = useState(initialProduct?.name || "");
   const [slug, setSlug] = useState(initialProduct?.slug || "");
   const [collectionId, setCollectionId] = useState(
     initialProduct?.collection_id || ""
   );
-  const [rentalPriceRupees, setRentalPriceRupees] = useState(
-    initialProduct ? paiseToRupeesInput(initialProduct.rental_price_paise) : "12000"
+  const [priceRupees, setPriceRupees] = useState(
+    initialProduct
+      ? paiseToRupeesInput(initialProduct.price_paise ?? initialProduct.rental_price_paise)
+      : "15000"
   );
-  const [rentalDurationDays, setRentalDurationDays] = useState(
-    initialProduct?.rental_duration_days || 3
-  );
-  const [depositRupees, setDepositRupees] = useState(
-    initialProduct ? paiseToRupeesInput(initialProduct.deposit_paise) : "5000"
+  const [compareAtPriceRupees, setCompareAtPriceRupees] = useState(
+    initialProduct?.compare_at_price_paise
+      ? paiseToRupeesInput(initialProduct.compare_at_price_paise)
+      : ""
   );
   const [shortDesc, setShortDesc] = useState(
     initialProduct?.short_description || ""
@@ -44,9 +55,15 @@ export function ProductForm({
   );
 
   // Sizes selection
-  const ALL_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "Free Size"];
+  const DRESS_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "Free Size", "Custom Fit"];
+  const ORNAMENT_SIZES = ["Free Size", "Standard", "Adjustable"];
+
   const [selectedSizes, setSelectedSizes] = useState<string[]>(
-    initialProduct?.sizes || ["S", "M", "L"]
+    initialProduct?.sizes?.length > 0
+      ? initialProduct.sizes
+      : category === "dress"
+      ? ["S", "M", "L", "Custom Fit"]
+      : ["Free Size"]
   );
 
   // Colors list
@@ -55,19 +72,6 @@ export function ProductForm({
   );
   const [newColorName, setNewColorName] = useState("");
   const [newColorHex, setNewColorHex] = useState("#B06F5E");
-
-  // Additional duration options
-  const [rentalOptions, setRentalOptions] = useState<
-    { duration_days: number; price_rupees: string }[]
-  >(
-    initialProduct?.product_rental_options?.map((o: any) => ({
-      duration_days: o.duration_days,
-      price_rupees: paiseToRupeesInput(o.price_paise),
-    })) || [
-      { duration_days: 5, price_rupees: "16000" },
-      { duration_days: 7, price_rupees: "20000" },
-    ]
-  );
 
   // Images state
   const [images, setImages] = useState<UploadedAsset[]>(
@@ -91,11 +95,9 @@ export function ProductForm({
   );
   const [careInstructions, setCareInstructions] = useState(
     initialProduct?.care_instructions ||
-      "Professional dry clean only. Protect intricate zardozi embroidery from direct perfume spray."
-  );
-  const [rentalConditions, setRentalConditions] = useState(
-    initialProduct?.rental_conditions ||
-      "Includes complimentary alteration fitting with our master tailor. Return in provided luxury garment case."
+      (category === "ornament"
+        ? "Keep stored in luxury velvet jewelry case. Avoid contact with moisture, perfume, and cosmetics."
+        : "Professional dry clean only. Protect intricate zardozi and hand embroidery from direct perfume spray.")
   );
   const [seoTitle, setSeoTitle] = useState(initialProduct?.seo_title || "");
   const [seoDescription, setSeoDescription] = useState(
@@ -105,7 +107,10 @@ export function ProductForm({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Auto-slug generator on name change
+  // Delete / Archive Modal State
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setName(val);
@@ -114,8 +119,8 @@ export function ProductForm({
         val
           .toLowerCase()
           .trim()
-          .replace(/[^a-z0-9\s-]/g, "")
-          .replace(/\s+/g, "-")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
       );
     }
   };
@@ -136,17 +141,6 @@ export function ProductForm({
     setColors(colors.filter((_, i) => i !== idx));
   };
 
-  const addOption = () => {
-    setRentalOptions([
-      ...rentalOptions,
-      { duration_days: 10, price_rupees: "25000" },
-    ]);
-  };
-
-  const removeOption = (idx: number) => {
-    setRentalOptions(rentalOptions.filter((_, i) => i !== idx));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -155,20 +149,20 @@ export function ProductForm({
     const payload = {
       name,
       slug,
+      category,
+      allow_customization: category === "dress" ? allowCustomization : false,
       collection_id: collectionId || null,
-      rental_price_rupees: rentalPriceRupees,
-      rental_duration_days: rentalDurationDays,
-      deposit_rupees: depositRupees,
+      price_rupees: priceRupees,
+      rental_price_rupees: priceRupees,
+      compare_at_price_rupees: compareAtPriceRupees || null,
       short_description: shortDesc,
       description,
       sizes: selectedSizes,
       colors,
-      rental_options: rentalOptions,
       images,
       is_published: isPublished,
       is_featured: isFeatured,
       care_instructions: careInstructions,
-      rental_conditions: rentalConditions,
       seo_title: seoTitle,
       seo_description: seoDescription,
     };
@@ -199,10 +193,9 @@ export function ProductForm({
     }
   };
 
-  const handleDelete = async () => {
+  const handleConfirmDelete = async () => {
     if (!isEditing) return;
-    if (!confirm("Are you sure you want to archive this bridal outfit?")) return;
-    setLoading(true);
+    setDeleting(true);
     try {
       const res = await fetch(`/api/admin/products/${initialProduct.id}`, {
         method: "DELETE",
@@ -212,403 +205,467 @@ export function ProductForm({
       router.refresh();
     } catch (err: unknown) {
       setErrorMsg("Failed to delete product.");
-      setLoading(false);
+      setDeleting(false);
+      setDeleteModalOpen(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8 max-w-5xl">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-[#E8DDD1] gap-4">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/admin/products"
-            className="p-1.5 rounded-xs border border-[#E8DDD1] text-[#7A6A5F] hover:text-[#2B211C] hover:bg-white shrink-0"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <h1 className="font-serif text-xl sm:text-2xl text-[#2B211C] font-normal truncate">
-            {isEditing ? `Edit: ${initialProduct.name}` : "Create New Bridal Outfit"}
-          </h1>
-        </div>
+    <>
+      <form onSubmit={handleSubmit} className="space-y-8 max-w-5xl">
+        {/* Top Bar Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-[#E8DDD1] gap-4">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/admin/products"
+              className="p-1.5 text-[#7A6A5F] hover:text-[#2B211C] hover:bg-[#FAF6F0] rounded-sm transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+            <div>
+              <span className="text-[11px] font-sans font-semibold uppercase tracking-[0.2em] text-[#B06F5E]">
+                {isEditing ? "Edit Catalog Item" : "Create New Product"}
+              </span>
+              <h1 className="font-serif text-2xl sm:text-3xl text-[#2B211C] font-normal tracking-tight mt-0.5">
+                {isEditing ? `Edit: ${name}` : "Add Dress or Ornament"}
+              </h1>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 self-end sm:self-auto w-full sm:w-auto justify-end">
-          {isEditing && (
+          <div className="flex items-center gap-3">
+            {isEditing && (
+              <button
+                type="button"
+                onClick={() => setDeleteModalOpen(true)}
+                className="px-3.5 py-2 border border-red-300 text-red-700 hover:bg-red-50 rounded-sm text-xs font-medium transition-colors"
+              >
+                Archive Product
+              </button>
+            )}
+
             <button
-              type="button"
-              onClick={handleDelete}
-              className="px-3.5 py-2 border border-red-200 text-red-700 hover:bg-red-50 text-xs font-medium rounded-sm flex items-center gap-1.5"
+              type="submit"
+              disabled={loading}
+              className="px-6 py-2.5 bg-[#B06F5E] hover:bg-[#975D4E] text-white rounded-sm text-xs font-medium tracking-wide uppercase transition-colors shadow-xs disabled:opacity-50"
             >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Archive</span>
+              {loading ? "Saving..." : isEditing ? "Save Changes" : "Publish Product"}
             </button>
+          </div>
+        </div>
+
+        {errorMsg && (
+          <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-sm text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        {/* 1. Category Selection: Dress vs Ornaments */}
+        <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-4">
+          <h2 className="font-serif text-lg text-[#2B211C] font-normal pb-2 border-b border-[#E8DDD1]">
+            1. Product Type &amp; Classification
+          </h2>
+
+          <div>
+            <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-2 font-medium">
+              Select Product Type *
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setCategory("dress");
+                  setSelectedSizes(["S", "M", "L", "Custom Fit"]);
+                }}
+                className={`p-4 rounded-sm border text-left transition-all flex items-start gap-3 ${
+                  category === "dress"
+                    ? "border-[#B06F5E] bg-[#FAF6F0] ring-1 ring-[#B06F5E]"
+                    : "border-[#E8DDD1] bg-white hover:border-[#B06F5E]/50"
+                }`}
+              >
+                <div className="p-2 rounded-xs bg-[#B06F5E]/10 text-[#B06F5E] shrink-0 mt-0.5">
+                  <Scissors className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="font-serif text-base font-medium text-[#2B211C] block">
+                    Bridal Dress / Garment
+                  </span>
+                  <span className="text-xs text-[#7A6A5F] mt-0.5 block">
+                    Bridal Lehengas, Reception Gowns, Sarees, and Couture ensembles. Supports custom fit measurements.
+                  </span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCategory("ornament");
+                  setSelectedSizes(["Free Size"]);
+                }}
+                className={`p-4 rounded-sm border text-left transition-all flex items-start gap-3 ${
+                  category === "ornament"
+                    ? "border-[#B06F5E] bg-[#FAF6F0] ring-1 ring-[#B06F5E]"
+                    : "border-[#E8DDD1] bg-white hover:border-[#B06F5E]/50"
+                }`}
+              >
+                <div className="p-2 rounded-xs bg-[#B06F5E]/10 text-[#B06F5E] shrink-0 mt-0.5">
+                  <Gem className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="font-serif text-base font-medium text-[#2B211C] block">
+                    Fine Ornament / Jewelry
+                  </span>
+                  <span className="text-xs text-[#7A6A5F] mt-0.5 block">
+                    Bridal Jewelry sets, Necklaces, Chokers, Bangles, and Ornaments. No body measurements needed.
+                  </span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Dress Customization Toggle */}
+          {category === "dress" && (
+            <div className="p-3 bg-[#FAF6F0]/60 border border-[#E8DDD1] rounded-sm flex items-center justify-between">
+              <div>
+                <span className="text-xs font-medium text-[#2B211C] block">
+                  Allow Dress Customization &amp; Measurements
+                </span>
+                <span className="text-[11px] text-[#7A6A5F]">
+                  Enables customers to provide Bust, Waist, Hips, and special tailoring notes during checkout.
+                </span>
+              </div>
+              <input
+                type="checkbox"
+                checked={allowCustomization}
+                onChange={(e) => setAllowCustomization(e.target.checked)}
+                className="w-4 h-4 accent-[#B06F5E] cursor-pointer"
+              />
+            </div>
           )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex-1 sm:flex-initial px-5 py-2.5 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-xs font-medium uppercase tracking-wider rounded-sm shadow-xs transition-colors disabled:opacity-50 text-center"
-          >
-            {loading ? "Saving..." : isEditing ? "Update Garment" : "Publish to Vault"}
-          </button>
         </div>
-      </div>
 
-      {errorMsg && (
-        <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-sm flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{errorMsg}</span>
-        </div>
-      )}
+        {/* 2. Core Identity & Pricing */}
+        <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-4">
+          <h2 className="font-serif text-lg text-[#2B211C] font-normal pb-2 border-b border-[#E8DDD1]">
+            2. Basic Details &amp; Razorpay Purchase Pricing
+          </h2>
 
-      {/* 1. Basic Details Card */}
-      <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-4">
-        <h2 className="font-serif text-lg text-[#2B211C] pb-2 border-b border-[#E8DDD1]">
-          General Information
-        </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
+                Product Title *
+              </label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={handleNameChange}
+                placeholder="e.g. Royal Ivory Zardozi Lehenga"
+                className="w-full text-xs bg-white border border-[#E8DDD1] rounded-sm px-3 py-2 text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
+              />
+            </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
+                URL Slug *
+              </label>
+              <input
+                type="text"
+                required
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                placeholder="royal-ivory-zardozi-lehenga"
+                className="w-full text-xs bg-white border border-[#E8DDD1] rounded-sm px-3 py-2 text-[#2B211C] font-mono focus:outline-none focus:border-[#B06F5E]"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
+                Boutique Collection
+              </label>
+              <select
+                value={collectionId}
+                onChange={(e) => setCollectionId(e.target.value)}
+                className="w-full text-xs bg-white border border-[#E8DDD1] rounded-sm px-3 py-2 text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
+              >
+                <option value="">None (Unassigned)</option>
+                {collections.map((col) => (
+                  <option key={col.id} value={col.id}>
+                    {col.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1 font-medium text-[#2B211C]">
+                Purchase Price (₹) *
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2 text-xs text-[#7A6A5F]">₹</span>
+                <input
+                  type="text"
+                  required
+                  value={priceRupees}
+                  onChange={(e) => setPriceRupees(e.target.value)}
+                  placeholder="15000"
+                  className="w-full text-xs bg-white border border-[#E8DDD1] rounded-sm pl-7 pr-3 py-2 text-[#2B211C] font-semibold focus:outline-none focus:border-[#B06F5E]"
+                />
+              </div>
+              <span className="text-[10px] text-[#7A6A5F] mt-0.5 block">Prepaid via Razorpay</span>
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
+                Original MRP / Compare At (₹)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2 text-xs text-[#7A6A5F]">₹</span>
+                <input
+                  type="text"
+                  value={compareAtPriceRupees}
+                  onChange={(e) => setCompareAtPriceRupees(e.target.value)}
+                  placeholder="20000"
+                  className="w-full text-xs bg-white border border-[#E8DDD1] rounded-sm pl-7 pr-3 py-2 text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
+                />
+              </div>
+              <span className="text-[10px] text-[#7A6A5F] mt-0.5 block">Optional strikethrough</span>
+            </div>
+          </div>
+
           <div>
-            <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1 font-sans">
-              Outfit Name *
+            <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
+              Short Tagline / Summary
             </label>
             <input
               type="text"
-              required
-              value={name}
-              onChange={handleNameChange}
-              placeholder="e.g. Ivory Embroidered Bridal Lehenga"
-              className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
+              value={shortDesc}
+              onChange={(e) => setShortDesc(e.target.value)}
+              placeholder="Handcrafted raw silk lehenga with heritage zardozi borders..."
+              className="w-full text-xs bg-white border border-[#E8DDD1] rounded-sm px-3 py-2 text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
             />
           </div>
 
           <div>
-            <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1 font-sans">
-              URL Slug *
+            <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
+              Complete Description &amp; Craftsmanship Notes
             </label>
-            <input
-              type="text"
-              required
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              placeholder="ivory-embroidered-bridal-lehenga"
-              className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
+            <textarea
+              rows={4}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Detailed fabric composition, craftsmanship heritage, embellishments..."
+              className="w-full text-xs bg-white border border-[#E8DDD1] rounded-sm p-3 text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* 3. Sizes & Colors */}
+        <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-4">
+          <h2 className="font-serif text-lg text-[#2B211C] font-normal pb-2 border-b border-[#E8DDD1]">
+            3. Available Sizing &amp; Colors
+          </h2>
+
           <div>
-            <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1 font-sans">
-              Assigned Collection
+            <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-2 font-medium">
+              Available Sizes
             </label>
-            <select
-              value={collectionId}
-              onChange={(e) => setCollectionId(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
-            >
-              <option value="">-- No Collection --</option>
-              {collections.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
+            <div className="flex flex-wrap gap-2">
+              {(category === "dress" ? DRESS_SIZES : ORNAMENT_SIZES).map((sz) => {
+                const active = selectedSizes.includes(sz);
+                return (
+                  <button
+                    key={sz}
+                    type="button"
+                    onClick={() => toggleSize(sz)}
+                    className={`px-3 py-1.5 rounded-sm border text-xs font-medium transition-all ${
+                      active
+                        ? "bg-[#B06F5E] text-white border-[#B06F5E]"
+                        : "bg-white text-[#2B211C] border-[#E8DDD1] hover:border-[#B06F5E]"
+                    }`}
+                  >
+                    {sz}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Colors Palette */}
+          <div className="pt-2">
+            <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-2 font-medium">
+              Color Variations
+            </label>
+
+            <div className="flex flex-wrap gap-2 mb-3">
+              {colors.map((c, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#E8DDD1] rounded-sm text-xs text-[#2B211C]"
+                >
+                  <span
+                    className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0"
+                    style={{ backgroundColor: c.hex }}
+                  />
+                  <span>{c.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeColor(idx)}
+                    className="ml-1 text-[#7A6A5F] hover:text-red-700"
+                  >
+                    &times;
+                  </button>
+                </span>
               ))}
-            </select>
-          </div>
+            </div>
 
-          <div>
-            <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1 font-sans">
-              Rental Rate (₹) *
-            </label>
-            <input
-              type="number"
-              required
-              min={0}
-              value={rentalPriceRupees}
-              onChange={(e) => setRentalPriceRupees(e.target.value)}
-              placeholder="12000"
-              className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1 font-sans">
-              Base Duration (Days) *
-            </label>
-            <input
-              type="number"
-              required
-              min={1}
-              value={rentalDurationDays}
-              onChange={(e) => setRentalDurationDays(parseInt(e.target.value, 10))}
-              className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
-            />
+            <div className="flex items-center gap-2 max-w-sm">
+              <input
+                type="text"
+                value={newColorName}
+                onChange={(e) => setNewColorName(e.target.value)}
+                placeholder="Color name (e.g. Ruby Red, Polki Gold)"
+                className="text-xs bg-white border border-[#E8DDD1] rounded-sm px-3 py-1.5 text-[#2B211C] flex-1 focus:outline-none"
+              />
+              <input
+                type="color"
+                value={newColorHex}
+                onChange={(e) => setNewColorHex(e.target.value)}
+                className="w-8 h-8 rounded-sm border border-[#E8DDD1] cursor-pointer"
+              />
+              <button
+                type="button"
+                onClick={addColor}
+                className="px-3 py-1.5 bg-[#FAF6F0] hover:bg-[#F4ECE1] text-[#2B211C] border border-[#E8DDD1] rounded-sm text-xs font-medium"
+              >
+                Add Color
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* 4. High-Resolution Product Images */}
+        <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-4">
+          <h2 className="font-serif text-lg text-[#2B211C] font-normal pb-2 border-b border-[#E8DDD1]">
+            4. Product Imagery (Cloudinary)
+          </h2>
+
+          <CloudinaryUploader
+            assets={images}
+            onChange={setImages}
+            role="product"
+            multiple={true}
+            colors={colors}
+          />
+        </div>
+
+        {/* 5. Care Instructions & Settings */}
+        <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-4">
+          <h2 className="font-serif text-lg text-[#2B211C] font-normal pb-2 border-b border-[#E8DDD1]">
+            5. Care Guide, Status &amp; SEO
+          </h2>
+
           <div>
-            <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1 font-sans">
-              Refundable Security Deposit (₹)
+            <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
+              Care &amp; Handling Instructions
             </label>
-            <input
-              type="number"
-              min={0}
-              value={depositRupees}
-              onChange={(e) => setDepositRupees(e.target.value)}
-              placeholder="5000"
-              className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
+            <textarea
+              rows={2}
+              value={careInstructions}
+              onChange={(e) => setCareInstructions(e.target.value)}
+              className="w-full text-xs bg-white border border-[#E8DDD1] rounded-sm p-2.5 text-[#2B211C] focus:outline-none"
             />
           </div>
 
-          <div className="flex items-center gap-6 pt-5">
-            <label className="flex items-center gap-2 cursor-pointer text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <label className="flex items-center gap-2 p-3 bg-[#FAF6F0] rounded-sm border border-[#E8DDD1] cursor-pointer text-xs">
               <input
                 type="checkbox"
                 checked={isPublished}
                 onChange={(e) => setIsPublished(e.target.checked)}
-                className="w-4 h-4 rounded-xs text-[#B06F5E] focus:ring-[#B06F5E]"
+                className="w-4 h-4 accent-[#B06F5E]"
               />
-              <span className="font-medium text-[#2B211C]">Published on Website</span>
+              <div>
+                <span className="font-medium text-[#2B211C] block">Publish to Storefront</span>
+                <span className="text-[10px] text-[#7A6A5F]">Make visible for customer purchase</span>
+              </div>
             </label>
 
-            <label className="flex items-center gap-2 cursor-pointer text-xs">
+            <label className="flex items-center gap-2 p-3 bg-[#FAF6F0] rounded-sm border border-[#E8DDD1] cursor-pointer text-xs">
               <input
                 type="checkbox"
                 checked={isFeatured}
                 onChange={(e) => setIsFeatured(e.target.checked)}
-                className="w-4 h-4 rounded-xs text-[#B06F5E] focus:ring-[#B06F5E]"
+                className="w-4 h-4 accent-[#B06F5E]"
               />
-              <span className="font-medium text-[#2B211C]">Feature on Homepage</span>
+              <div>
+                <span className="font-medium text-[#2B211C] block">Feature on Homepage</span>
+                <span className="text-[10px] text-[#7A6A5F]">Show in curated spotlight showcase</span>
+              </div>
             </label>
           </div>
-        </div>
 
-        <div>
-          <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1 font-sans">
-            Short Description (Display on Card / Header)
-          </label>
-          <input
-            type="text"
-            value={shortDesc}
-            onChange={(e) => setShortDesc(e.target.value)}
-            placeholder="A timeless ivory lehenga with delicate hand embroidery, perfect for your special day."
-            className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
-          />
-        </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
+                SEO Page Title
+              </label>
+              <input
+                type="text"
+                value={seoTitle}
+                onChange={(e) => setSeoTitle(e.target.value)}
+                placeholder="e.g. Royal Ivory Zardozi Lehenga | Haya Bridal"
+                className="w-full text-xs bg-white border border-[#E8DDD1] rounded-sm px-3 py-2 text-[#2B211C]"
+              />
+            </div>
 
-        <div>
-          <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1 font-sans">
-            Full Editorial Description
-          </label>
-          <textarea
-            rows={4}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe the fabric weave (pure raw silk, organza), embroidery technique (dabka, cutdana, sequins), cancan flare, and styling notes..."
-            className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
-          />
-        </div>
-      </div>
-
-      {/* 2. Cloudinary Upload Card */}
-      <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-4">
-        <div>
-          <h2 className="font-serif text-lg text-[#2B211C]">
-            Product Imagery (Cloudinary CDN)
-          </h2>
-          <p className="text-xs text-[#7A6A5F]">
-            Upload multiple high-resolution photos. Select one as primary showcase. All images are hosted securely on Cloudinary.
-          </p>
-        </div>
-
-        <CloudinaryUploader
-          role="product"
-          multiple={true}
-          assets={images}
-          onChange={setImages}
-          colors={colors}
-        />
-      </div>
-
-      {/* 3. Sizes & Color Options */}
-      <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-5">
-        <h2 className="font-serif text-lg text-[#2B211C] pb-2 border-b border-[#E8DDD1]">
-          Sizing &amp; Color Variants
-        </h2>
-
-        <div>
-          <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-2 font-sans">
-            Available Sizes
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {ALL_SIZES.map((sz) => {
-              const checked = selectedSizes.includes(sz);
-              return (
-                <button
-                  key={sz}
-                  type="button"
-                  onClick={() => toggleSize(sz)}
-                  className={`px-3.5 py-1.5 rounded-sm text-xs font-medium border transition-colors ${
-                    checked
-                      ? "bg-[#B06F5E] text-white border-[#B06F5E]"
-                      : "bg-white text-[#2B211C] border-[#E8DDD1] hover:border-[#B06F5E]"
-                  }`}
-                >
-                  {sz}
-                </button>
-              );
-            })}
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
+                Meta Description
+              </label>
+              <input
+                type="text"
+                value={seoDescription}
+                onChange={(e) => setSeoDescription(e.target.value)}
+                placeholder="Exclusive handcrafted bridal lehenga with intricate hand embroidery..."
+                className="w-full text-xs bg-white border border-[#E8DDD1] rounded-sm px-3 py-2 text-[#2B211C]"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="pt-4 border-t border-[#E8DDD1]">
-          <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-2 font-sans">
-            Color Swatches
-          </label>
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            {colors.map((c, idx) => (
-              <span
-                key={idx}
-                className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FAF6F0] border border-[#E8DDD1] rounded-sm text-xs"
-              >
-                <span
-                  className="w-3 h-3 rounded-full border border-black/10"
-                  style={{ backgroundColor: c.hex }}
-                />
-                <span>{c.name}</span>
-                <button
-                  type="button"
-                  onClick={() => removeColor(idx)}
-                  className="text-[#7A6A5F] hover:text-red-600 ml-1"
-                >
-                  &times;
-                </button>
-              </span>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2 max-w-sm">
-            <input
-              type="text"
-              placeholder="Color name (e.g. Sage Green)"
-              value={newColorName}
-              onChange={(e) => setNewColorName(e.target.value)}
-              className="px-2.5 py-1.5 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] flex-1"
-            />
-            <input
-              type="color"
-              value={newColorHex}
-              onChange={(e) => setNewColorHex(e.target.value)}
-              className="w-8 h-8 rounded-sm border border-[#E8DDD1] p-0.5 cursor-pointer bg-white"
-            />
-            <button
-              type="button"
-              onClick={addColor}
-              className="px-3 py-1.5 bg-[#FAF6F0] border border-[#E8DDD1] hover:bg-[#F4ECE1] text-xs font-medium rounded-sm"
-            >
-              + Add
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. Duration Pricing Rules */}
-      <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-4">
-        <div className="flex items-center justify-between pb-2 border-b border-[#E8DDD1]">
-          <div>
-            <h2 className="font-serif text-lg text-[#2B211C]">
-              Extended Rental Durations
-            </h2>
-            <p className="text-xs text-[#7A6A5F]">
-              Configure custom rental prices for 5-day, 7-day, or 10-day reservations.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={addOption}
-            className="inline-flex items-center gap-1 text-xs text-[#B06F5E] hover:underline font-medium"
+        {/* Bottom Submit Bar */}
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E8DDD1]">
+          <Link
+            href="/admin/products"
+            className="px-4 py-2 border border-[#E8DDD1] hover:bg-[#FAF6F0] text-xs font-medium text-[#2B211C] rounded-sm"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add Duration Tier</span>
+            Cancel
+          </Link>
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-6 py-2.5 bg-[#B06F5E] hover:bg-[#975D4E] text-white rounded-sm text-xs font-medium uppercase tracking-wider shadow-xs disabled:opacity-50"
+          >
+            {loading ? "Saving..." : isEditing ? "Save Changes" : "Publish Product"}
           </button>
         </div>
+      </form>
 
-        <div className="space-y-3">
-          {rentalOptions.map((opt, idx) => (
-            <div key={idx} className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-[#7A6A5F]">Days:</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={opt.duration_days}
-                  onChange={(e) => {
-                    const next = [...rentalOptions];
-                    next[idx].duration_days = parseInt(e.target.value, 10);
-                    setRentalOptions(next);
-                  }}
-                  className="w-20 px-2 py-1.5 text-xs bg-white border border-[#E8DDD1] rounded-sm"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-[#7A6A5F]">Price (₹):</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={opt.price_rupees}
-                  onChange={(e) => {
-                    const next = [...rentalOptions];
-                    next[idx].price_rupees = e.target.value;
-                    setRentalOptions(next);
-                  }}
-                  className="w-28 px-2 py-1.5 text-xs bg-white border border-[#E8DDD1] rounded-sm"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => removeOption(idx)}
-                className="text-red-600 hover:text-red-800 p-1"
-                title="Remove tier"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 5. Care Instructions & Terms */}
-      <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-4">
-        <h2 className="font-serif text-lg text-[#2B211C] pb-2 border-b border-[#E8DDD1]">
-          Care Instructions &amp; Conditions
-        </h2>
-
-        <div>
-          <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1 font-sans">
-            Care Instructions
-          </label>
-          <textarea
-            rows={2}
-            value={careInstructions}
-            onChange={(e) => setCareInstructions(e.target.value)}
-            className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1 font-sans">
-            Rental Conditions
-          </label>
-          <textarea
-            rows={2}
-            value={rentalConditions}
-            onChange={(e) => setRentalConditions(e.target.value)}
-            className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
-          />
-        </div>
-      </div>
-    </form>
+      {/* Archive / Delete Product Confirmation Modal */}
+      <ConfirmDialogModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Archive Catalog Product"
+        message={`Are you sure you want to archive "${name}"? Archiving will unpublish and hide this item from the active store catalog.`}
+        confirmLabel="Yes, Archive Product"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={deleting}
+      />
+    </>
   );
 }

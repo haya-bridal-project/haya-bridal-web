@@ -7,7 +7,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, email, phone, message, product_id, product_name, kind, size, preferred_date } = body;
 
-    if (!name || !email || !message) {
+    const finalEmail = (email && email.trim()) || (phone ? `${phone.replace(/\D/g, "")}@whatsapp.guest` : null);
+
+    if (!name || !finalEmail || !message) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -21,7 +23,7 @@ export async function POST(request: NextRequest) {
         product_id: product_id || null,
         kind: kind === "contact" ? "contact" : "product",
         name,
-        email: email.toLowerCase().trim(),
+        email: finalEmail.toLowerCase().trim(),
         phone: phone || null,
         message,
         size: size || null,
@@ -40,7 +42,7 @@ export async function POST(request: NextRequest) {
     emailEnquiryReceived({
       id: data.id,
       name,
-      email,
+      email: finalEmail,
       phone,
       message,
       productName: product_name,

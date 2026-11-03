@@ -17,9 +17,9 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Haya — Premium Bridal Rental | Grace for Every Occasion",
+  title: "Haya — Bespoke Bridal Couture & Fine Ornaments",
   description:
-    "Handcrafted elegance. Curated styles. Luxury bridal wear, couture lehengas, and occasion wear for rent. Make your special moments unforgettable.",
+    "Handcrafted elegance. Curated styles. Luxury bridal dresses with bespoke tailoring and fine ornaments. Make your special moments unforgettable.",
   icons: {
     icon: "/haya-logo-transparent.png",
     apple: "/haya-logo-transparent.png",

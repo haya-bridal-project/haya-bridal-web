@@ -10,7 +10,7 @@ import {
   ShoppingBag,
   Menu,
   X,
-  Calendar,
+  MessageSquare,
 } from "lucide-react";
 import { HayaLogo } from "@/components/brand/HayaLogo";
 
@@ -49,6 +49,8 @@ export function Header({
   const navLinks = [
     { label: "Home", href: "/" },
     { label: "Collections", href: "/collections" },
+    { label: "Dresses", href: "/collections?category=dress" },
+    { label: "Ornaments", href: "/collections?category=ornament" },
     { label: "How It Works", href: "/how-it-works" },
     { label: "About", href: "/about" },
     { label: "Contact", href: "/contact" },
@@ -80,16 +82,16 @@ export function Header({
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-8 ml-8">
+          <nav className="hidden lg:flex items-center space-x-7 ml-8">
             {navLinks.map((link) => {
               const active = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`text-sm tracking-wide transition-colors font-sans py-1 relative ${
+                  className={`text-xs tracking-wide transition-colors font-sans py-1 relative ${
                     active
-                      ? "text-[#2B211C] font-medium after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1.5px] after:bg-[#B06F5E]"
+                      ? "text-[#2B211C] font-semibold after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1.5px] after:bg-[#B06F5E]"
                       : "text-[#7A6A5F] hover:text-[#2B211C]"
                   }`}
                 >
@@ -101,22 +103,22 @@ export function Header({
 
           {/* Right Action Controls */}
           <div className="flex items-center space-x-1 sm:space-x-3">
-            {/* Desktop Outfit Search Bar matching reference */}
+            {/* Desktop Outfit Search Bar */}
             <form
               onSubmit={handleSearchSubmit}
-              className="hidden md:flex items-center relative w-56 lg:w-64"
+              className="hidden md:flex items-center relative w-52 lg:w-60"
             >
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search for outfits..."
-                className="w-full pl-4 pr-9 py-2 text-xs bg-transparent border border-[#E8DDD1] rounded-full text-[#2B211C] placeholder-[#7A6A5F]/70 focus:outline-none focus:border-[#B06F5E] focus:ring-1 focus:ring-[#B06F5E] transition-all"
+                placeholder="Search dresses & ornaments..."
+                className="w-full pl-3.5 pr-8 py-1.5 text-xs bg-transparent border border-[#E8DDD1] rounded-full text-[#2B211C] placeholder-[#7A6A5F]/70 focus:outline-none focus:border-[#B06F5E] focus:ring-1 focus:ring-[#B06F5E] transition-all"
               />
               <button
                 type="submit"
                 aria-label="Search"
-                className="absolute right-3 text-[#7A6A5F] hover:text-[#2B211C]"
+                className="absolute right-2.5 text-[#7A6A5F] hover:text-[#2B211C]"
               >
                 <Search className="w-3.5 h-3.5 stroke-[2]" />
               </button>
@@ -159,26 +161,27 @@ export function Header({
               <User className="w-5 h-5 stroke-[1.5]" />
             </Link>
 
-            {/* Bag / Bookings */}
+            {/* Bag / Orders */}
             <Link
               href="/account/bookings"
               className="p-1.5 text-[#2B211C] hover:text-[#B06F5E] transition-colors relative"
-              aria-label="My Bookings"
+              aria-label="My Orders"
+              title="My Orders"
             >
               <ShoppingBag className="w-5 h-5 stroke-[1.5]" />
             </Link>
 
-            {/* "Book Consultation" Button in muted terracotta */}
+            {/* "Enquiry" Button */}
             <Link
-              href="/consultation"
-              className="hidden sm:inline-flex items-center justify-center px-5 py-2.5 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-xs font-medium tracking-wide rounded-sm shadow-sm transition-all hover:shadow focus:outline-none"
+              href="/enquiry"
+              className="hidden sm:inline-flex items-center justify-center px-4 py-2 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-xs font-medium tracking-wide rounded-sm shadow-xs transition-all hover:shadow focus:outline-none"
             >
-              Book Consultation
+              Enquiry
             </Link>
           </div>
         </div>
 
-        {/* Mobile Search Input Drawer (expandable) */}
+        {/* Mobile Search Input Drawer */}
         {searchOpen && (
           <div className="md:hidden py-3 border-t border-[#E8DDD1] animate-in fade-in slide-in-from-top-1">
             <form onSubmit={handleSearchSubmit} className="relative flex items-center">
@@ -187,8 +190,8 @@ export function Header({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search bridal lehengas, gowns, couture..."
-                className="w-full pl-4 pr-10 py-2.5 text-xs bg-white border border-[#E8DDD1] rounded-full text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
+                placeholder="Search dresses, ornaments, lehengas..."
+                className="w-full pl-4 pr-10 py-2 text-xs bg-white border border-[#E8DDD1] rounded-full text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
               />
               <button
                 type="submit"
@@ -202,19 +205,18 @@ export function Header({
         )}
       </div>
 
-      {/* Mobile Slide-out Menu Overlay */}
+      {/* Mobile Slide-out Menu */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
             onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
           />
 
-          {/* Drawer content */}
-          <div className="fixed inset-y-0 left-0 max-w-xs w-full bg-[#FAF6F0] p-6 shadow-2xl flex flex-col justify-between border-r border-[#E8DDD1] z-50">
+          <div className="fixed inset-y-0 left-0 w-3/4 max-w-sm bg-[#FAF6F0] p-6 shadow-xl flex flex-col justify-between z-50 overflow-y-auto">
             <div>
-              <div className="flex items-center justify-between pb-6 border-b border-[#E8DDD1]">
+              <div className="flex items-center justify-between pb-4 border-b border-[#E8DDD1]">
                 <HayaLogo size="sm" variant="dark" customLogoUrl={customLogoUrl} />
                 <button
                   type="button"
@@ -246,7 +248,7 @@ export function Header({
                 </Link>
                 <Link href="/account/bookings" className="flex items-center gap-2 hover:text-[#2B211C]">
                   <ShoppingBag className="w-4 h-4" />
-                  <span>Rental Bookings</span>
+                  <span>My Orders</span>
                 </Link>
                 <Link href="/account/wishlist" className="flex items-center gap-2 hover:text-[#2B211C]">
                   <Heart className="w-4 h-4" />
@@ -260,11 +262,11 @@ export function Header({
 
             <div className="pt-6 border-t border-[#E8DDD1]">
               <Link
-                href="/consultation"
+                href="/enquiry"
                 className="w-full flex items-center justify-center gap-2 py-3 bg-[#B06F5E] text-white text-xs font-medium tracking-wide rounded-sm shadow-sm hover:bg-[#975D4E]"
               >
-                <Calendar className="w-4 h-4" />
-                Book Consultation
+                <MessageSquare className="w-4 h-4" />
+                Enquiry
               </Link>
             </div>
           </div>

@@ -12,7 +12,7 @@ export default async function AdminEnquiriesPage() {
   try {
     const { data, error } = await serviceClient
       .from("enquiries")
-      .select("*,product:products(id,name,slug)")
+      .select("*,product:products(id,name,slug,primary_image_url,category)")
       .order("created_at", { ascending: false });
 
     if (!error && data) {

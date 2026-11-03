@@ -5,16 +5,18 @@ import { rupeesToPaise } from "@/lib/money";
 
 export async function POST(request: NextRequest) {
   try {
-    const adminCtx = await requireAdmin();
+    await requireAdmin();
     const body = await request.json();
 
     const {
       name,
       slug,
+      category,
+      allow_customization,
       collection_id,
+      price_rupees,
       rental_price_rupees,
-      rental_duration_days,
-      deposit_rupees,
+      compare_at_price_rupees,
       short_description,
       description,
       sizes,
@@ -22,59 +24,76 @@ export async function POST(request: NextRequest) {
       is_published,
       is_featured,
       care_instructions,
-      rental_conditions,
       seo_title,
       seo_description,
-      images, // [{ url, public_id, alt, color_name, is_primary }]
-      rental_options, // [{ duration_days, price_rupees }]
+      images,
     } = body;
 
     if (!name || !slug) {
       return NextResponse.json({ error: "Name and slug are required." }, { status: 400 });
     }
 
-    const rentalPricePaise = rupeesToPaise(rental_price_rupees);
-    if (rentalPricePaise == null || rentalPricePaise < 0) {
-      return NextResponse.json({ error: "Valid rental price is required." }, { status: 400 });
+    const pricePaise = rupeesToPaise(price_rupees || rental_price_rupees);
+    if (pricePaise == null || pricePaise < 0) {
+      return NextResponse.json({ error: "Valid purchase price is required." }, { status: 400 });
     }
 
-    const depositPaise = rupeesToPaise(deposit_rupees) || 0;
-
+    const compareAtPricePaise = rupeesToPaise(compare_at_price_rupees);
     const serviceClient = createServiceClient();
 
-    // 1. Insert product
-    const { data: product, error: pError } = await serviceClient
+    const baseProductData = {
+      name: name.trim(),
+      slug: slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+      collection_id: collection_id || null,
+      rental_price_paise: pricePaise,
+      rental_duration_days: 1,
+      deposit_paise: 0,
+      buffer_days: 0,
+      compare_at_price_paise: compareAtPricePaise || null,
+      short_description: short_description || null,
+      description: description || null,
+      sizes: Array.isArray(sizes) ? sizes : [],
+      colors: Array.isArray(colors) ? colors : [],
+      is_published: !!is_published,
+      is_featured: !!is_featured,
+      care_instructions: care_instructions || null,
+      rental_conditions: null,
+      seo_title: seo_title || null,
+      seo_description: seo_description || null,
+    };
+
+    // Try inserting with category and allow_customization
+    let productId: string | null = null;
+    const { data: prodWithExtra, error: errWithExtra } = await serviceClient
       .from("products")
       .insert({
-        name: name.trim(),
-        slug: slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-"),
-        collection_id: collection_id || null,
-        rental_price_paise: rentalPricePaise,
-        rental_duration_days: parseInt(rental_duration_days || "3", 10),
-        deposit_paise: depositPaise,
-        short_description: short_description || null,
-        description: description || null,
-        sizes: Array.isArray(sizes) ? sizes : [],
-        colors: Array.isArray(colors) ? colors : [],
-        is_published: !!is_published,
-        is_featured: !!is_featured,
-        care_instructions: care_instructions || null,
-        rental_conditions: rental_conditions || null,
-        seo_title: seo_title || null,
-        seo_description: seo_description || null,
+        ...baseProductData,
+        category: category || "dress",
+        allow_customization: allow_customization !== false,
+        price_paise: pricePaise,
       })
       .select("id")
       .single();
 
-    if (pError) {
-      console.error("[admin/products] insert error", pError);
-      return NextResponse.json({ error: pError.message }, { status: 500 });
+    if (!errWithExtra && prodWithExtra) {
+      productId = prodWithExtra.id;
+    } else {
+      // Fallback if category columns not yet added to DB
+      const { data: fallbackProd, error: fallbackError } = await serviceClient
+        .from("products")
+        .insert(baseProductData)
+        .select("id")
+        .single();
+
+      if (fallbackError || !fallbackProd) {
+        console.error("[admin/products] insert error", fallbackError || errWithExtra);
+        return NextResponse.json({ error: (fallbackError || errWithExtra)?.message }, { status: 500 });
+      }
+      productId = fallbackProd.id;
     }
 
-    const productId = product.id;
-
     // 2. Insert images into product_images table
-    if (Array.isArray(images) && images.length > 0) {
+    if (productId && Array.isArray(images) && images.length > 0) {
       const imageRows = images.map((img: any, idx: number) => ({
         product_id: productId,
         url: img.url,
@@ -90,29 +109,11 @@ export async function POST(request: NextRequest) {
       await serviceClient.from("product_images").insert(imageRows);
     }
 
-    // 3. Insert additional duration options
-    if (Array.isArray(rental_options) && rental_options.length > 0) {
-      const optionRows = rental_options.flatMap((opt: any, idx: number) => {
-        const paise = rupeesToPaise(opt.price_rupees);
-        if (paise == null) return [];
-        return [
-          {
-            product_id: productId,
-            duration_days: parseInt(opt.duration_days, 10),
-            price_paise: paise,
-            sort_order: idx,
-          },
-        ];
-      });
-
-      if (optionRows.length > 0) {
-        await serviceClient.from("product_rental_options").insert(optionRows);
-      }
-    }
-
     return NextResponse.json({ ok: true, id: productId });
   } catch (err: unknown) {
-    console.error("[admin/products] error", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Error creating product" },
+      { status: 500 }
+    );
   }
 }

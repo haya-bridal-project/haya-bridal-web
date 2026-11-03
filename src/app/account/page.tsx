@@ -95,10 +95,10 @@ export default async function AccountPage() {
               </div>
               <div>
                 <span className="font-serif text-base text-[#2B211C] block group-hover:text-[#B06F5E]">
-                  Rental Bookings
+                  My Orders
                 </span>
                 <span className="text-xs text-[#7A6A5F]">
-                  {bookings.length} {bookings.length === 1 ? "booking" : "bookings"}
+                  {bookings.length} {bookings.length === 1 ? "order" : "orders"}
                 </span>
               </div>
             </div>
@@ -146,11 +146,11 @@ export default async function AccountPage() {
           </Link>
         </div>
 
-        {/* Recent Bookings Section */}
+        {/* Recent Orders Section */}
         <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 sm:p-8 shadow-xs">
           <div className="flex items-center justify-between pb-4 border-b border-[#E8DDD1]">
             <h2 className="font-serif text-xl sm:text-2xl text-[#2B211C] font-normal">
-              Recent Rental Bookings
+              Recent Orders
             </h2>
             <Link
               href="/account/bookings"
@@ -175,7 +175,7 @@ export default async function AccountPage() {
                       {b.product_name}
                     </h3>
                     <p className="text-xs text-[#7A6A5F] mt-0.5">
-                      {formatDate(b.start_date)} to {formatDate(b.end_date)} ({b.duration_days} Days)
+                      Placed on {formatDate(b.created_at)}
                     </p>
                   </div>
 
@@ -201,7 +201,7 @@ export default async function AccountPage() {
             </div>
           ) : (
             <div className="py-10 text-center text-xs text-[#7A6A5F]">
-              <p>You have not placed any rental reservations yet.</p>
+              <p>You have not placed any orders yet.</p>
               <Link
                 href="/collections"
                 className="mt-4 inline-flex items-center px-4 py-2 bg-[#B06F5E] text-white rounded-sm text-xs font-medium"

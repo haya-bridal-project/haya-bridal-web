@@ -28,11 +28,11 @@ export async function generateMetadata(props: CollectionPageProps): Promise<Meta
   const collection = await getCollectionBySlug(slug);
   if (!collection) return { title: "Collection Not Found — Haya" };
   return {
-    title: `${collection.seo_title || collection.name} — Haya Premium Bridal Rental`,
+    title: `${collection.seo_title || collection.name} — Haya Bridal Couture & Fine Ornaments`,
     description:
       collection.seo_description ||
       collection.description ||
-      `Rent luxury ${collection.name} from Haya Premium Bridal Rental.`,
+      `Explore luxury handcrafted ${collection.name} at Haya Bridal.`,
   };
 }
 
@@ -45,6 +45,7 @@ export default async function IndividualCollectionPage(props: CollectionPageProp
     notFound();
   }
 
+  const category = typeof searchParams.category === "string" ? searchParams.category : null;
   const sort = typeof searchParams.sort === "string" ? searchParams.sort : "latest";
   const colors = Array.isArray(searchParams.color)
     ? searchParams.color
@@ -68,6 +69,7 @@ export default async function IndividualCollectionPage(props: CollectionPageProp
       getFacets(collection.id),
       listProducts({
         collectionId: collection.id,
+        category,
         sort,
         colors,
         sizes,
@@ -143,12 +145,12 @@ export default async function IndividualCollectionPage(props: CollectionPageProp
             ) : (
               <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-12 text-center shadow-xs">
                 <h3 className="font-serif text-xl text-[#2B211C] mb-2 font-normal">
-                  No Outfits Found in {collection.name}
+                  No Products Found in {collection.name}
                 </h3>
                 <p className="text-xs text-[#7A6A5F] max-w-sm mx-auto mb-6">
                   {colors.length > 0 || sizes.length > 0 || minPrice || maxPrice
-                    ? "No outfits match your chosen filters. Try resetting the filters."
-                    : "No published outfits in this collection yet. Please check back soon or book a consultation."}
+                    ? "No products match your chosen filters. Try resetting the filters."
+                    : "No published products in this collection yet. Please check back soon or book a consultation."}
                 </p>
                 <div className="flex items-center justify-center gap-3">
                   <Link
