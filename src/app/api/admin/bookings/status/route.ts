@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { emailBookingStatusChanged, emailBookingConfirmed } from "@/lib/email/events";
 import type { Booking } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
   try {
-    const adminCtx = await requireAdmin();
+    await requireAdmin();
     const { booking_id, status, note } = await request.json();
 
     if (!booking_id || !status) {
@@ -15,46 +15,60 @@ export async function POST(request: NextRequest) {
 
     const serviceClient = createServiceClient();
 
-    // Try stored procedure first
-    const { data: rpcData, error: rpcError } = await serviceClient.rpc(
-      "admin_update_booking_status",
-      {
-        p_booking_id: booking_id,
-        p_status: status,
-        p_note: note || null,
-      }
-    );
-
-    if (rpcError) {
-      // Fallback: direct update
-      await serviceClient
-        .from("bookings")
-        .update({
-          status,
-          admin_notes: note || null,
-          ...(status === "picked_up" ? { picked_up_at: new Date().toISOString() } : {}),
-          ...(status === "returned" ? { returned_at: new Date().toISOString() } : {}),
-          ...(status === "cancelled" || status === "rejected"
-            ? { cancelled_at: new Date().toISOString(), cancellation_reason: note || null }
-            : {}),
-        })
-        .eq("id", booking_id);
-    }
-
-    // Fetch booking to trigger status update email
-    const { data: booking } = await serviceClient
+    // Fetch existing booking
+    const { data: existingBooking, error: fetchErr } = await serviceClient
       .from("bookings")
       .select("*")
       .eq("id", booking_id)
       .single();
 
-    if (booking) {
+    if (fetchErr || !existingBooking) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    const updatePayload: Record<string, any> = {
+      status,
+      ...(note ? { admin_notes: note } : {}),
+      ...(status === "confirmed" ? { payment_status: "paid", hold_expires_at: null } : {}),
+      ...(status === "picked_up" ? { picked_up_at: new Date().toISOString() } : {}),
+      ...(status === "returned" ? { returned_at: new Date().toISOString() } : {}),
+      ...(status === "cancelled" || status === "rejected"
+        ? { cancelled_at: new Date().toISOString(), cancellation_reason: note || null }
+        : {}),
+    };
+
+    const { error: updateError } = await serviceClient
+      .from("bookings")
+      .update(updatePayload)
+      .eq("id", booking_id);
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+
+    // Insert booking event log
+    await serviceClient.from("booking_events").insert({
+      booking_id,
+      event_type: `admin_${status}`,
+      from_status: existingBooking.status,
+      to_status: status,
+      note: note || `Admin updated status to ${status}`,
+    });
+
+    // Fetch updated booking for emails
+    const { data: updatedBooking } = await serviceClient
+      .from("bookings")
+      .select("*")
+      .eq("id", booking_id)
+      .single();
+
+    if (updatedBooking) {
       if (status === "confirmed") {
-        emailBookingConfirmed(booking as Booking, false).catch((e) =>
+        emailBookingConfirmed(updatedBooking as Booking, false).catch((e) =>
           console.error("[email] admin confirmed error", e)
         );
       } else if (status === "cancelled" || status === "rejected") {
-        emailBookingStatusChanged(booking as Booking, note).catch((e) =>
+        emailBookingStatusChanged(updatedBooking as Booking, note).catch((e) =>
           console.error("[email] admin status email error", e)
         );
       }

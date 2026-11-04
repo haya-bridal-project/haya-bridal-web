@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { verifyPaymentSignature, fetchPayment } from "@/lib/razorpay";
 import { env, isConfigured } from "@/lib/env";
+import { canAccessOrder } from "@/lib/guest-token";
 import { emailBookingConfirmed, emailPaymentFailed } from "@/lib/email/events";
 import type { Booking } from "@/lib/types";
 
@@ -11,26 +12,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Logged-in users and guests can both pay. Guests prove access with the order token.
     const supabase = await createClient();
     const { data: authData } = await supabase.auth.getUser();
-    if (!authData?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const userId = authData?.user?.id ?? null;
 
-    const { booking_id, razorpay_order_id, razorpay_payment_id, razorpay_signature } =
+    const { booking_id, razorpay_order_id, razorpay_payment_id, razorpay_signature, access_token } =
       await request.json();
 
     if (!booking_id || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return NextResponse.json({ error: "Missing verification payload" }, { status: 400 });
     }
-
-    const { keySecret } = env.razorpay();
-    const isValid = verifyPaymentSignature(
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      keySecret
-    );
 
     const serviceClient = createServiceClient();
 
@@ -47,15 +39,47 @@ export async function POST(request: NextRequest) {
 
     const booking = bookingData as Booking;
 
+    if (!canAccessOrder(booking, userId, access_token)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // The Razorpay order being verified must belong to this booking
+    const { data: paymentRow } = await serviceClient
+      .from("payments")
+      .select("booking_id")
+      .eq("razorpay_order_id", razorpay_order_id)
+      .maybeSingle();
+
+    if (!paymentRow || paymentRow.booking_id !== booking.id) {
+      return NextResponse.json({ error: "Payment does not match this order" }, { status: 400 });
+    }
+
+    const { keySecret } = env.razorpay();
+    const isValid = verifyPaymentSignature(
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      keySecret
+    );
+
     if (!isValid) {
       // Signature mismatch
       await serviceClient
         .from("payments")
         .update({
           status: "failed",
+          error_code: "SIGNATURE_VERIFICATION_FAILED",
           error_description: "Signature mismatch verification failure",
         })
         .eq("razorpay_order_id", razorpay_order_id);
+
+      await serviceClient
+        .from("bookings")
+        .update({
+          payment_status: "failed",
+          admin_notes: `${booking.admin_notes ? `${booking.admin_notes}\n` : ""}Payment failed: Invalid signature check at ${new Date().toISOString()}`,
+        })
+        .eq("id", booking.id);
 
       emailPaymentFailed(booking, razorpay_payment_id).catch((e) =>
         console.error("[email] payment failed error", e)
@@ -65,11 +89,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Signature verified! Fetch method details from gateway
-    let method = "card";
+    let method = "online";
     try {
       const pDetails = await fetchPayment(razorpay_payment_id);
-      method = pDetails.method || "card";
-    } catch {}
+      method = pDetails.method || "online";
+    } catch {
+      // Method fallback if fetch fails
+    }
 
     // 1. Update payment record to captured
     await serviceClient
@@ -79,28 +105,31 @@ export async function POST(request: NextRequest) {
         status: "captured",
         method,
         verified_at: new Date().toISOString(),
+        error_code: null,
+        error_description: null,
       })
       .eq("razorpay_order_id", razorpay_order_id);
 
-    // 2. Try calling stored procedure to confirm paid booking inside a lock
-    const { data: rpcData, error: rpcError } = await serviceClient.rpc(
-      "confirm_paid_booking",
-      { p_booking_id: booking.id }
-    );
+    // 2. Unconditionally confirm the order
+    await serviceClient
+      .from("bookings")
+      .update({
+        status: "confirmed",
+        payment_status: "paid",
+        hold_expires_at: null,
+      })
+      .eq("id", booking.id);
 
-    if (rpcError) {
-      // Fallback: direct update
-      await serviceClient
-        .from("bookings")
-        .update({
-          status: "confirmed",
-          payment_status: "paid",
-          hold_expires_at: null,
-        })
-        .eq("id", booking.id);
-    }
+    // 3. Log event
+    await serviceClient.from("booking_events").insert({
+      booking_id: booking.id,
+      event_type: "payment_confirmed",
+      from_status: booking.status,
+      to_status: "confirmed",
+      note: `Payment verified via Razorpay (${razorpay_payment_id}, method: ${method})`,
+    });
 
-    // 3. Trigger Brevo confirmation email
+    // 4. Trigger Brevo confirmation email
     emailBookingConfirmed(
       { ...booking, status: "confirmed", payment_status: "paid" },
       true

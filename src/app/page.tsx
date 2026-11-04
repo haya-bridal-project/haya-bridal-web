@@ -13,6 +13,7 @@ import { Header } from "@/components/storefront/Header";
 import { Hero } from "@/components/storefront/Hero";
 import { CollectionCards } from "@/components/storefront/CollectionCards";
 import { ProductCard } from "@/components/storefront/ProductCard";
+import { BespokeBridalBanner } from "@/components/storefront/BespokeBridalBanner";
 import { Footer } from "@/components/storefront/Footer";
 
 export const dynamic = "force-dynamic";
@@ -113,17 +114,14 @@ export default async function HomePage() {
                   >
                     Submit an Enquiry
                   </Link>
-                  <Link
-                    href="/admin"
-                    className="inline-flex items-center justify-center px-5 py-2.5 bg-transparent border border-[#E8DDD1] hover:border-[#B06F5E] text-[#2B211C] text-xs font-medium rounded-sm"
-                  >
-                    Admin Portal &rarr;
-                  </Link>
                 </div>
               </div>
             )}
           </div>
         </section>
+
+        {/* 03. Bespoke Bridal Feature Section (Immediately Below Curated Catalog) */}
+        <BespokeBridalBanner />
 
         {/* Experience & Trust Banner */}
         <section className="py-14 bg-[#F4ECE1] border-y border-[#E8DDD1]">
@@ -132,7 +130,7 @@ export default async function HomePage() {
               The Haya Promise
             </span>
             <h2 className="font-serif text-2xl sm:text-3xl text-[#2B211C] max-w-xl mx-auto font-normal mt-2 mb-4">
-              Bespoke Bridal Couture & Handcrafted Ornaments
+              Bespoke Bridal Couture &amp; Handcrafted Ornaments
             </h2>
             <p className="text-xs sm:text-sm text-[#7A6A5F] max-w-2xl mx-auto leading-relaxed mb-8">
               Every bridal dress is crafted with museum-grade care and personalized to your exact custom measurements. Seamless online payment via Razorpay, strictly zero COD, and secure doorstep delivery.

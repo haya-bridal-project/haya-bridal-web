@@ -35,10 +35,10 @@ export async function updateSession(request: NextRequest) {
   const isAuthed = !!user;
   const path = request.nextUrl.pathname;
 
+  // Checkout (/book, /checkout) is open to guests and logged-in users alike.
+  // Only the account area and the admin panel require a signed-in user.
   const needsAuth =
     path.startsWith("/account") ||
-    path.startsWith("/checkout") ||
-    path.startsWith("/book/") ||
     (path.startsWith("/admin") && !path.startsWith("/admin/login"));
 
   if (needsAuth && !isAuthed) {

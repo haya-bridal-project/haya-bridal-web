@@ -19,6 +19,7 @@ interface RazorpayCheckoutWidgetProps {
   booking: Booking;
   razorpayReady: boolean;
   razorpayKeyId: string;
+  accessToken?: string | null;
 }
 
 declare global {
@@ -31,6 +32,7 @@ export function RazorpayCheckoutWidget({
   booking,
   razorpayReady,
   razorpayKeyId,
+  accessToken,
 }: RazorpayCheckoutWidgetProps) {
   const router = useRouter();
 
@@ -47,7 +49,7 @@ export function RazorpayCheckoutWidget({
       const res = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ booking_id: booking.id }),
+        body: JSON.stringify({ booking_id: booking.id, access_token: accessToken ?? undefined }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -82,6 +84,7 @@ export function RazorpayCheckoutWidget({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 booking_id: booking.id,
+                access_token: accessToken ?? undefined,
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
@@ -91,7 +94,7 @@ export function RazorpayCheckoutWidget({
             if (!verifyRes.ok) {
               throw new Error(verifyData.error || "Payment verification failed.");
             }
-            router.push(`/booking/confirmation/${booking.reference}`);
+            router.push(`/booking/confirmation/${booking.reference}${accessToken ? `?t=${accessToken}` : ""}`);
           } catch (e: unknown) {
             setErrorMsg(e instanceof Error ? e.message : "Verification error.");
             setLoading(false);
@@ -105,9 +108,31 @@ export function RazorpayCheckoutWidget({
       };
 
       const rzp = new window.Razorpay(options);
-      rzp.on("payment.failed", (response: any) => {
-        setErrorMsg(response.error?.description || "Payment failed at gateway.");
+      rzp.on("payment.failed", async (response: any) => {
+        const err = response?.error || {};
+        setErrorMsg(err.description || "Payment failed or declined at gateway.");
         setLoading(false);
+
+        // Report failure to server so admin has immediate visibility
+        try {
+          await fetch("/api/razorpay/failed", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              booking_id: booking.id,
+              access_token: accessToken ?? undefined,
+              razorpay_order_id: err.metadata?.order_id || data.order_id,
+              razorpay_payment_id: err.metadata?.payment_id || null,
+              error_code: err.code || "PAYMENT_FAILED",
+              error_description: err.description || err.reason || "Payment declined or failed at gateway",
+              error_source: err.source || "customer",
+              error_step: err.step || "payment_authorization",
+              error_reason: err.reason || "payment_failed",
+            }),
+          });
+        } catch (reportErr) {
+          console.error("[checkout] failed to report payment failure", reportErr);
+        }
       });
       rzp.open();
     } catch (err: unknown) {

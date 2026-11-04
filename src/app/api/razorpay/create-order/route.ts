@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { createOrder } from "@/lib/razorpay";
-import { env, isConfigured } from "@/lib/env";
+import { isConfigured } from "@/lib/env";
+import { canAccessOrder } from "@/lib/guest-token";
 import type { Booking } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
@@ -14,19 +15,20 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Logged-in users and guests can both pay. Guests prove access with the order token.
     const supabase = await createClient();
     const { data: authData } = await supabase.auth.getUser();
-    if (!authData?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const userId = authData?.user?.id ?? null;
 
-    const { booking_id } = await request.json();
+    const { booking_id, access_token } = await request.json();
     if (!booking_id) {
       return NextResponse.json({ error: "Missing booking_id" }, { status: 400 });
     }
 
+    const serviceClient = createServiceClient();
+
     // Retrieve booking record
-    const { data: booking, error: bError } = await supabase
+    const { data: booking, error: bError } = await serviceClient
       .from("bookings")
       .select("*")
       .eq("id", booking_id)
@@ -38,8 +40,8 @@ export async function POST(request: NextRequest) {
 
     const b = booking as Booking;
 
-    // Check customer authorization
-    if (b.customer_id !== authData.user.id) {
+    // Owner (logged in) or holder of the guest token only
+    if (!canAccessOrder(b, userId, access_token)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -59,7 +61,6 @@ export async function POST(request: NextRequest) {
     });
 
     // Record created payment in Supabase using service client
-    const serviceClient = createServiceClient();
     await serviceClient.from("payments").upsert(
       {
         booking_id: b.id,

@@ -27,6 +27,20 @@ function authHeader() {
 
 export type RazorpayOrder = { id: string; amount: number; currency: string; receipt: string; status: string };
 
+/** Turn a failed Razorpay API response into a readable error message. */
+function describeRazorpayFailure(status: number, body: string) {
+  if (status === 401) {
+    return "Razorpay authentication failed. Check that RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are a matching pair (test or live).";
+  }
+  try {
+    const description = (JSON.parse(body) as { error?: { description?: string } }).error?.description;
+    if (description) return `Razorpay: ${description}`;
+  } catch {
+    /* non-JSON body */
+  }
+  return "razorpay_order_failed";
+}
+
 export async function createOrder(input: { amountPaise: number; receipt: string; notes: Record<string, string> }): Promise<RazorpayOrder> {
   if (!Number.isInteger(input.amountPaise) || input.amountPaise < 100) throw new Error("invalid_amount");
   const res = await fetch("https://api.razorpay.com/v1/orders", {
@@ -37,7 +51,7 @@ export async function createOrder(input: { amountPaise: number; receipt: string;
   if (!res.ok) {
     const text = await res.text();
     console.error("[razorpay] order creation failed", res.status, text.slice(0, 300));
-    throw new Error("razorpay_order_failed");
+    throw new Error(describeRazorpayFailure(res.status, text));
   }
   return (await res.json()) as RazorpayOrder;
 }

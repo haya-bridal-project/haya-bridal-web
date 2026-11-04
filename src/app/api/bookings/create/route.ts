@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { emailBookingRequested } from "@/lib/email/events";
+import { signOrderToken } from "@/lib/guest-token";
 import type { Booking } from "@/lib/types";
 
 function generateRef(): string {
@@ -11,12 +12,10 @@ function generateRef(): string {
 
 export async function POST(request: NextRequest) {
   try {
+    // Logged-in users get the order linked to their account; guests can order too.
     const supabase = await createClient();
     const { data: authData } = await supabase.auth.getUser();
-
-    if (!authData?.user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
+    const userId = authData?.user?.id ?? null;
 
     const body = await request.json();
     const {
@@ -34,6 +33,9 @@ export async function POST(request: NextRequest) {
 
     if (!product_id || !name || !email || !phone) {
       return NextResponse.json({ error: "Missing required order details" }, { status: 400 });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
+      return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
     }
 
     const serviceClient = createServiceClient();
@@ -79,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     const baseInsert = {
       reference,
-      customer_id: authData.user.id,
+      customer_id: userId,
       product_id: product.id,
       product_name: product.name,
       size: size || null,
@@ -98,11 +100,11 @@ export async function POST(request: NextRequest) {
       status: "pending_payment",
       payment_status: "unpaid",
       hold_expires_at: holdExpires,
-      customer_name: name.trim(),
-      customer_email: email.toLowerCase().trim(),
-      customer_phone: phone.trim(),
-      customer_address: address ? address.trim() : null,
-      notes: notes ? notes.trim() : null,
+      customer_name: String(name).trim(),
+      customer_email: String(email).toLowerCase().trim(),
+      customer_phone: String(phone).trim(),
+      customer_address: address ? String(address).trim() : null,
+      notes: notes ? String(notes).trim() : null,
     };
 
     // Try inserting with customization & order_type fields
@@ -145,6 +147,8 @@ export async function POST(request: NextRequest) {
       reference: insertedBooking.reference,
       total_paise: insertedBooking.total_paise,
       status: insertedBooking.status,
+      // Lets guests reach their own checkout / confirmation pages
+      access_token: signOrderToken(insertedBooking.reference),
     });
   } catch (err: unknown) {
     console.error("[api/bookings/create] unexpected error", err);

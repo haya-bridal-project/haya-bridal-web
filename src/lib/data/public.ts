@@ -35,26 +35,24 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   email: { admin_notification_email: null },
 };
 
-export type DataIssue = { kind: "not_configured" | "schema_missing" | "error"; message: string } | null;
-
-function classify(err: { code?: string; message?: string } | null): DataIssue {
-  if (!err) return null;
-  if (err.code === "42P01" || err.code === "PGRST205" || /does not exist|schema cache/i.test(err.message ?? ""))
-    return { kind: "schema_missing", message: "Database tables are not installed yet. Run the Supabase migration." };
-  console.error("[data]", err.code, err.message);
-  return { kind: "error", message: "Content is temporarily unavailable." };
-}
+export type DataIssue = { kind: "not_configured" | "error"; message: string } | null;
 
 function client() {
   if (!isConfigured.supabase()) return null;
   return createPublicClient();
 }
 
+function classify(err: unknown): DataIssue {
+  if (!err) return null;
+  return { kind: "error", message: (err as { message?: string })?.message || "Database query failed." };
+}
+
 export const getSiteSettings = cache(async (): Promise<SiteSettings & { _issue: DataIssue }> => {
   const db = client();
   if (!db) return { ...DEFAULT_SETTINGS, _issue: { kind: "not_configured", message: "Supabase is not configured." } };
-  const { data, error } = await db.from("site_settings").select("key,value");
-  const merged = structuredClone(DEFAULT_SETTINGS) as SiteSettings;
+
+  const { data, error } = await db.from("site_settings").select("key, value");
+  const merged = structuredClone(DEFAULT_SETTINGS);
   for (const row of data ?? []) {
     const k = row.key as keyof SiteSettings;
     if (k in merged) (merged as Record<string, unknown>)[k] = { ...(merged[k] as object), ...(row.value as object) };
@@ -63,7 +61,7 @@ export const getSiteSettings = cache(async (): Promise<SiteSettings & { _issue: 
 });
 
 const PRODUCT_CARD_SELECT =
-  "id,name,slug,short_description,rental_price_paise,compare_at_price_paise,rental_duration_days,deposit_paise,quantity,colors,sizes,is_featured,sort_order,collection_id,created_at,product_images(id,url,public_id,alt,sort_order,is_primary,color_name,width,height),collection:collections(id,name,slug)";
+  "id,name,slug,short_description,category,price_paise,rental_price_paise,compare_at_price_paise,rental_duration_days,deposit_paise,quantity,colors,sizes,is_featured,sort_order,collection_id,created_at,product_images(id,url,public_id,alt,sort_order,is_primary,color_name,width,height),collection:collections(id,name,slug)";
 
 export const getHeroSlides = cache(async (): Promise<HeroSlide[]> => {
   const db = client();
@@ -73,12 +71,21 @@ export const getHeroSlides = cache(async (): Promise<HeroSlide[]> => {
   return (data as HeroSlide[]) ?? [];
 });
 
-export const getPromoBanners = cache(async (): Promise<PromoBanner[]> => {
+export const getActivePromoBanner = cache(async (): Promise<PromoBanner | null> => {
   const db = client();
-  if (!db) return [];
-  const { data, error } = await db.from("promo_banners").select("*").eq("is_published", true).order("sort_order").limit(4);
+  if (!db) return null;
+  const now = new Date().toISOString();
+  const { data, error } = await db
+    .from("promo_banners")
+    .select("*")
+    .eq("is_active", true)
+    .lte("starts_at", now)
+    .gte("ends_at", now)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
   classify(error);
-  return (data as PromoBanner[]) ?? [];
+  return (data as PromoBanner) ?? null;
 });
 
 export const getPublishedCollections = cache(async (): Promise<{ items: Collection[]; issue: DataIssue }> => {
@@ -114,7 +121,6 @@ export const getFeaturedProducts = cache(async (limit = 8): Promise<ProductWithI
 
   let items = (data as unknown as ProductWithImages[]) ?? [];
   if (items.length === 0) {
-    // If no products are marked as featured, fallback to latest published outfits
     const { data: fallbackData, error: fallbackError } = await db
       .from("products")
       .select(PRODUCT_CARD_SELECT)
@@ -157,6 +163,18 @@ export async function listProducts(qry: ListingQuery): Promise<{ items: ProductW
     .eq("is_archived", false);
 
   if (qry.collectionId) query = query.eq("collection_id", qry.collectionId);
+
+  // Category filter for dresses vs ornaments
+  if (qry.category) {
+    if (qry.category === "ornament" || qry.category === "ornaments") {
+      query = query.in("category", ["ornament", "ornaments"]);
+    } else if (qry.category === "dress" || qry.category === "dresses") {
+      query = query.in("category", ["dress", "dresses"]);
+    } else {
+      query = query.eq("category", qry.category);
+    }
+  }
+
   if (qry.minPaise != null) query = query.gte("rental_price_paise", qry.minPaise);
   if (qry.maxPaise != null) query = query.lte("rental_price_paise", qry.maxPaise);
   if (qry.sizes?.length) query = query.overlaps("sizes", qry.sizes);
@@ -193,19 +211,28 @@ export async function listProducts(qry: ListingQuery): Promise<{ items: ProductW
 }
 
 /** Distinct filter facets derived from real published products. */
-export async function getFacets(collectionId?: string | null) {
+export async function getFacets(collectionId?: string | null, category?: string | null) {
   const db = client();
   if (!db) return { colors: [], sizes: [], maxPaise: 0 };
-  let q = db.from("products").select("colors,sizes,rental_price_paise").eq("is_published", true).eq("is_archived", false).limit(1000);
+  let q = db.from("products").select("category,colors,sizes,price_paise,rental_price_paise").eq("is_published", true).eq("is_archived", false).limit(1000);
   if (collectionId) q = q.eq("collection_id", collectionId);
+  if (category) {
+    if (category === "ornament" || category === "ornaments") {
+      q = q.in("category", ["ornament", "ornaments"]);
+    } else if (category === "dress" || category === "dresses") {
+      q = q.in("category", ["dress", "dresses"]);
+    } else {
+      q = q.eq("category", category);
+    }
+  }
   const { data } = await q;
   const colors = new Map<string, string>();
   const sizes = new Set<string>();
   let maxPaise = 0;
-  for (const r of (data ?? []) as { colors: { name: string; hex: string }[]; sizes: string[]; rental_price_paise: number }[]) {
+  for (const r of (data ?? []) as { colors: { name: string; hex: string }[]; sizes: string[]; price_paise?: number; rental_price_paise: number }[]) {
     for (const c of r.colors ?? []) if (c?.name) colors.set(c.name, c.hex);
     for (const s of r.sizes ?? []) sizes.add(s);
-    maxPaise = Math.max(maxPaise, r.rental_price_paise);
+    maxPaise = Math.max(maxPaise, r.price_paise ?? r.rental_price_paise ?? 0);
   }
   const SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "3XL", "Free Size"];
   return {

@@ -23,11 +23,28 @@ function LoginForm() {
     setLoading(true);
 
     try {
+      const cleanEmail = email.trim().toLowerCase();
       const supabase = createClient();
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
+      let { error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
         password,
       });
+
+      // If Supabase blocks on unconfirmed email, auto-confirm and retry immediately
+      if (error && error.message?.toLowerCase().includes("confirm")) {
+        const autoConfirmRes = await fetch("/api/auth/auto-confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: cleanEmail }),
+        });
+        if (autoConfirmRes.ok) {
+          const retry = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password,
+          });
+          error = retry.error;
+        }
+      }
 
       if (error) {
         throw error;
@@ -123,7 +140,7 @@ export default function LoginPage() {
           Welcome to Your Bridal Vault
         </h2>
         <p className="mt-2 text-xs text-[#7A6A5F]">
-          Access your orders, fitting appointments, and saved wishlist.
+          Access your saved address, orders, and favourite products. You can also order without an account.
         </p>
       </div>
 

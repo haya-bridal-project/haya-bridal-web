@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { verifyWebhookSignature } from "@/lib/razorpay";
 import { env, isConfigured } from "@/lib/env";
-import { emailBookingConfirmed, emailRefundUpdate } from "@/lib/email/events";
+import { emailBookingConfirmed, emailPaymentFailed, emailRefundUpdate } from "@/lib/email/events";
 import type { Booking } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
     const paymentEntity = payload.payload?.payment?.entity;
     const orderId = paymentEntity?.order_id;
     const paymentId = paymentEntity?.id;
+    const method = paymentEntity?.method || "online";
 
     if (orderId) {
       // Find booking from payments table
@@ -59,13 +60,16 @@ export async function POST(request: NextRequest) {
         .eq("razorpay_order_id", orderId)
         .maybeSingle();
 
-      if (paymentRow && paymentRow.status !== "captured") {
+      if (paymentRow) {
         await serviceClient
           .from("payments")
           .update({
             razorpay_payment_id: paymentId,
             status: "captured",
+            method,
             verified_at: new Date().toISOString(),
+            error_code: null,
+            error_description: null,
           })
           .eq("razorpay_order_id", orderId);
 
@@ -90,6 +94,58 @@ export async function POST(request: NextRequest) {
           emailBookingConfirmed(booking as Booking, true).catch((e) =>
             console.error("[email] webhook confirmation error", e)
           );
+        }
+      }
+    }
+  } else if (eventType === "payment.failed") {
+    const paymentEntity = payload.payload?.payment?.entity;
+    const orderId = paymentEntity?.order_id;
+    const paymentId = paymentEntity?.id;
+    const errCode = paymentEntity?.error_code || "PAYMENT_FAILED";
+    const errDesc = paymentEntity?.error_description || paymentEntity?.error_reason || "Payment failed at gateway";
+
+    if (orderId) {
+      const { data: paymentRow } = await serviceClient
+        .from("payments")
+        .select("booking_id, status")
+        .eq("razorpay_order_id", orderId)
+        .maybeSingle();
+
+      if (paymentRow && paymentRow.status !== "captured") {
+        await serviceClient
+          .from("payments")
+          .update({
+            razorpay_payment_id: paymentId,
+            status: "failed",
+            error_code: errCode,
+            error_description: errDesc,
+          })
+          .eq("razorpay_order_id", orderId);
+
+        const { data: booking } = await serviceClient
+          .from("bookings")
+          .select("*")
+          .eq("id", paymentRow.booking_id)
+          .single();
+
+        if (booking && booking.payment_status !== "paid") {
+          const timestampStr = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+          const noteEntry = `[${timestampStr}] Webhook recorded payment failure: ${errDesc} (${errCode})`;
+          const updatedNotes = booking.admin_notes ? `${booking.admin_notes}\n${noteEntry}` : noteEntry;
+
+          await serviceClient
+            .from("bookings")
+            .update({
+              payment_status: "failed",
+              admin_notes: updatedNotes,
+            })
+            .eq("id", booking.id);
+
+          if (paymentId) {
+            emailPaymentFailed(booking as Booking, paymentId).catch((e) =>
+              console.error("[email] payment failed webhook error", e)
+            );
+          }
         }
       }
     }

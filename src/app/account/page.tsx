@@ -13,8 +13,10 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getSiteSettings } from "@/lib/data/public";
+import { getCustomerPrefill } from "@/lib/customer";
 import { Header } from "@/components/storefront/Header";
 import { Footer } from "@/components/storefront/Footer";
+import { AddressManager } from "@/components/account/AddressManager";
 import { formatINR } from "@/lib/money";
 import { formatDate } from "@/lib/dates";
 import { BOOKING_STATUS_LABEL } from "@/lib/labels";
@@ -48,6 +50,7 @@ export default async function AccountPage() {
     ]);
 
   const bookings = (bookingsData || []) as Booking[];
+  const prefill = getCustomerPrefill(user);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF6F0]">
@@ -146,7 +149,16 @@ export default async function AccountPage() {
           </Link>
         </div>
 
-        {/* Recent Orders Section */}
+        {/* 01. Address Manager for Logged-In User */}
+        <div className="mb-10">
+          <AddressManager
+            initialAddress={prefill.address}
+            fullName={profile?.full_name || prefill.name}
+            phone={profile?.phone || prefill.phone}
+          />
+        </div>
+
+        {/* 02. Recent Orders Section */}
         <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 sm:p-8 shadow-xs">
           <div className="flex items-center justify-between pb-4 border-b border-[#E8DDD1]">
             <h2 className="font-serif text-xl sm:text-2xl text-[#2B211C] font-normal">

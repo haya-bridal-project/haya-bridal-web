@@ -53,7 +53,7 @@ export function Hero({ slides = [] }: HeroProps) {
 
   return (
     <section className="relative w-full bg-[#FAF6F0] overflow-hidden min-h-[560px] sm:min-h-[640px] lg:min-h-[700px] xl:min-h-[740px] flex flex-col justify-between border-b border-[#E8DDD1]">
-      {/* 1. Full Panoramic Background Photo */}
+      {/* 1. Full Panoramic Background Photo (Without smoky overlay / blur) */}
       <div className="absolute inset-0 z-0">
         <Image
           src={imgSrc}
@@ -64,9 +64,6 @@ export function Hero({ slides = [] }: HeroProps) {
           className="object-cover object-[center_28%] sm:object-center"
           sizes="100vw"
         />
-        {/* Editorial gradient masks */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#FAF6F0]/95 via-[#FAF6F0]/80 sm:via-[#FAF6F0]/50 to-transparent z-10" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#FAF6F0] via-transparent to-transparent sm:hidden z-10" />
       </div>
 
       {/* 2. Top-Right Calligraphy Side Text */}
