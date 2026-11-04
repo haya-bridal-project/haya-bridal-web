@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -32,6 +33,16 @@ export function Header({
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Lock background scrolling while the mobile menu is open
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileMenuOpen]);
+
   // Close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -49,8 +60,8 @@ export function Header({
   const navLinks = [
     { label: "Home", href: "/" },
     { label: "Collections", href: "/collections" },
-    { label: "Dresses", href: "/collections?category=dress" },
-    { label: "Ornaments", href: "/collections?category=ornament" },
+    { label: "Dresses", href: "/dresses" },
+    { label: "Ornaments", href: "/ornaments" },
     { label: "How It Works", href: "/how-it-works" },
     { label: "About", href: "/about" },
     { label: "Contact", href: "/contact" },
@@ -61,7 +72,7 @@ export function Header({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Mobile menu trigger */}
-          <div className="flex items-center lg:hidden">
+          <div className="flex items-center lg:hidden order-last ml-1">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
@@ -73,7 +84,7 @@ export function Header({
           </div>
 
           {/* Logo (Left on desktop, Centered on mobile) */}
-          <div className="flex-1 lg:flex-none flex justify-center lg:justify-start">
+          <div className="flex-1 lg:flex-none flex justify-start">
             <HayaLogo
               size="md"
               variant="dark"
@@ -140,7 +151,7 @@ export function Header({
             {/* Wishlist */}
             <Link
               href="/account/wishlist"
-              className="p-1.5 text-[#2B211C] hover:text-[#B06F5E] relative transition-colors"
+              className="hidden lg:inline-flex p-1.5 text-[#2B211C] hover:text-[#B06F5E] relative transition-colors"
               aria-label="Wishlist"
             >
               <Heart className="w-5 h-5 stroke-[1.5]" />
@@ -206,7 +217,7 @@ export function Header({
       </div>
 
       {/* Mobile Slide-out Menu */}
-      {mobileMenuOpen && (
+      {mobileMenuOpen && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-50 lg:hidden">
           <div
             className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
@@ -254,9 +265,6 @@ export function Header({
                   <Heart className="w-4 h-4" />
                   <span>Wishlist</span>
                 </Link>
-                <Link href="/admin" className="flex items-center gap-2 hover:text-[#2B211C] pt-2 text-[#B06F5E]">
-                  <span>Admin Portal</span>
-                </Link>
               </div>
             </div>
 
@@ -271,7 +279,7 @@ export function Header({
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </header>
   );
 }

@@ -1,18 +1,28 @@
 import { Suspense } from "react";
 import { requireAdmin } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { BookingsManager } from "@/components/admin/BookingsManager";
-import type { Booking } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminBookingsPage() {
   await requireAdmin();
-  const supabase = await createClient();
+  const serviceClient = createServiceClient();
+
+  // Self-heal: Ensure any booking with payment_status = 'paid' is marked confirmed
+  try {
+    await serviceClient
+      .from("bookings")
+      .update({ status: "confirmed", hold_expires_at: null })
+      .eq("payment_status", "paid")
+      .eq("status", "pending_payment");
+  } catch (syncErr) {
+    console.error("[admin/orders] self-heal sync error", syncErr);
+  }
 
   let bookings: any[] = [];
   try {
-    const { data, error } = await supabase
+    const { data, error } = await serviceClient
       .from("bookings")
       .select("*,payments(*),product:products(id,name,category,product_images(url,is_primary))")
       .order("created_at", { ascending: false });
@@ -20,14 +30,15 @@ export default async function AdminBookingsPage() {
     if (!error && data) {
       bookings = data;
     } else {
-      // Fallback if join is not needed
-      const { data: fallbackData } = await supabase
+      // Fallback without product join if product foreign key relation differs
+      const { data: fallbackData } = await serviceClient
         .from("bookings")
         .select("*,payments(*)")
         .order("created_at", { ascending: false });
       bookings = fallbackData || [];
     }
-  } catch {
+  } catch (err) {
+    console.error("[admin/orders] fetch error", err);
     bookings = [];
   }
 

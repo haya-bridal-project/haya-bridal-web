@@ -15,6 +15,7 @@ interface CollectionFilterSidebarProps {
     maxPaise: number;
   };
   totalCount: number;
+  hideCategoryFilter?: boolean;
 }
 
 export function CollectionFilterSidebar({
@@ -22,6 +23,7 @@ export function CollectionFilterSidebar({
   activeSlug,
   facets,
   totalCount,
+  hideCategoryFilter = false,
 }: CollectionFilterSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -71,14 +73,14 @@ export function CollectionFilterSidebar({
   };
 
   const hasActiveFilters =
-    selectedCategory !== "all" ||
+    (!hideCategoryFilter && selectedCategory !== "all") ||
     selectedColors.length > 0 ||
     selectedSizes.length > 0 ||
     minPrice !== "" ||
     maxPrice !== "";
 
   const activeFilterCount =
-    (selectedCategory !== "all" ? 1 : 0) +
+    (!hideCategoryFilter && selectedCategory !== "all" ? 1 : 0) +
     selectedColors.length +
     selectedSizes.length +
     (minPrice ? 1 : 0) +
@@ -88,47 +90,49 @@ export function CollectionFilterSidebar({
   const filterControls = (
     <div className="flex flex-col space-y-6">
       {/* Product Type Filter: Dresses vs Ornaments */}
-      <div>
-        <label className="block text-xs font-medium text-[#2B211C] uppercase tracking-wider mb-2 font-sans">
-          Product Category
-        </label>
-        <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#F4ECE1]/60 rounded-sm border border-[#E8DDD1] text-[11px]">
-          <button
-            type="button"
-            onClick={() => updateParam("category", null)}
-            className={`py-1.5 px-2 rounded-xs font-medium transition-all ${
-              selectedCategory === "all" || !searchParams.get("category")
-                ? "bg-white text-[#2B211C] shadow-xs"
-                : "text-[#7A6A5F] hover:text-[#2B211C]"
-            }`}
-          >
-            All Items
-          </button>
-          <button
-            type="button"
-            onClick={() => updateParam("category", "dress")}
-            className={`py-1.5 px-2 rounded-xs font-medium transition-all flex items-center justify-center gap-1 ${
-              selectedCategory === "dress"
-                ? "bg-[#B06F5E] text-white shadow-xs"
-                : "text-[#7A6A5F] hover:text-[#2B211C]"
-            }`}
-          >
-            <span>Dresses</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => updateParam("category", "ornament")}
-            className={`py-1.5 px-2 rounded-xs font-medium transition-all flex items-center justify-center gap-1 ${
-              selectedCategory === "ornament"
-                ? "bg-[#B06F5E] text-white shadow-xs"
-                : "text-[#7A6A5F] hover:text-[#2B211C]"
-            }`}
-          >
-            <Gem className="w-3 h-3" />
-            <span>Ornaments</span>
-          </button>
+      {!hideCategoryFilter && (
+        <div>
+          <label className="block text-xs font-medium text-[#2B211C] uppercase tracking-wider mb-2 font-sans">
+            Product Category
+          </label>
+          <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#F4ECE1]/60 rounded-sm border border-[#E8DDD1] text-[11px]">
+            <button
+              type="button"
+              onClick={() => updateParam("category", null)}
+              className={`py-1.5 px-2 rounded-xs font-medium transition-all ${
+                selectedCategory === "all" || !searchParams.get("category")
+                  ? "bg-white text-[#2B211C] shadow-xs"
+                  : "text-[#7A6A5F] hover:text-[#2B211C]"
+              }`}
+            >
+              All Items
+            </button>
+            <button
+              type="button"
+              onClick={() => updateParam("category", "dress")}
+              className={`py-1.5 px-2 rounded-xs font-medium transition-all flex items-center justify-center gap-1 ${
+                selectedCategory === "dress"
+                  ? "bg-[#B06F5E] text-white shadow-xs"
+                  : "text-[#7A6A5F] hover:text-[#2B211C]"
+              }`}
+            >
+              <span>Dresses</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => updateParam("category", "ornament")}
+              className={`py-1.5 px-2 rounded-xs font-medium transition-all flex items-center justify-center gap-1 ${
+                selectedCategory === "ornament"
+                  ? "bg-[#B06F5E] text-white shadow-xs"
+                  : "text-[#7A6A5F] hover:text-[#2B211C]"
+              }`}
+            >
+              <Gem className="w-3 h-3" />
+              <span>Ornaments</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Price Range Filter */}
       <div>

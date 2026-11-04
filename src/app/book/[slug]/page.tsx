@@ -5,6 +5,7 @@ import {
   getSiteSettings,
 } from "@/lib/data/public";
 import { getCurrentUser } from "@/lib/auth";
+import { getCustomerPrefill } from "@/lib/customer";
 import { Header } from "@/components/storefront/Header";
 import { Footer } from "@/components/storefront/Footer";
 import { BookingCheckoutForm } from "@/components/storefront/BookingCheckoutForm";
@@ -23,13 +24,10 @@ export default async function BookOutfitPage(props: BookPageProps) {
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
+  // Guests and logged-in customers can both check out. Logged-in
+  // customers get their saved name, phone and address prefilled.
   const user = await getCurrentUser();
-  if (!user) {
-    const nextUrl = `/book/${slug}?${new URLSearchParams(
-      searchParams as Record<string, string>
-    ).toString()}`;
-    redirect(`/login?next=${encodeURIComponent(nextUrl)}`);
-  }
+  const prefill = getCustomerPrefill(user);
 
   const settings = await getSiteSettings();
 
@@ -52,7 +50,7 @@ export default async function BookOutfitPage(props: BookPageProps) {
     <div className="min-h-screen flex flex-col bg-[#FAF6F0]">
       <Header
         customLogoUrl={settings.brand.logo_url}
-        userEmail={user.email}
+        userEmail={user?.email}
       />
 
       <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 w-full">
@@ -71,11 +69,23 @@ export default async function BookOutfitPage(props: BookPageProps) {
           <h1 className="font-serif text-3xl sm:text-4xl text-[#2B211C] font-normal tracking-tight mt-1">
             Complete Your Order
           </h1>
+          {!user && (
+            <p className="mt-2 text-xs text-[#7A6A5F] font-sans">
+              Checking out as a guest.{" "}
+              <Link
+                href={`/login?next=${encodeURIComponent(`/book/${product.slug}`)}`}
+                className="text-[#B06F5E] hover:underline font-medium"
+              >
+                Sign in
+              </Link>{" "}
+              to use your saved address.
+            </p>
+          )}
         </div>
 
         <BookingCheckoutForm
           product={product}
-          user={user}
+          prefill={prefill}
           settings={settings}
           initialDuration={1}
           initialSize={initialSize}

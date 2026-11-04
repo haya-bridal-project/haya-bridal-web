@@ -1,9 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getSiteSettings } from "@/lib/data/public";
 import { isConfigured } from "@/lib/env";
+import { canAccessOrder } from "@/lib/guest-token";
 import { Header } from "@/components/storefront/Header";
 import { Footer } from "@/components/storefront/Footer";
 import { RazorpayCheckoutWidget } from "@/components/storefront/RazorpayCheckoutWidget";
@@ -13,24 +14,25 @@ export const dynamic = "force-dynamic";
 
 interface CheckoutPageProps {
   params: Promise<{ reference: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export default async function CheckoutPage(props: CheckoutPageProps) {
   const { reference } = await props.params;
+  const searchParams = await props.searchParams;
+  const token = typeof searchParams.t === "string" ? searchParams.t : null;
 
-  const supabase = await createClient();
   const user = await getCurrentUser();
-  if (!user) {
-    redirect(`/login?next=/checkout/${reference}`);
-  }
 
-  const { data: bookingData } = await supabase
+  if (!isConfigured.serviceRole()) notFound();
+  const { data: bookingData } = await createServiceClient()
     .from("bookings")
     .select("*")
     .eq("reference", reference)
     .maybeSingle();
 
-  if (!bookingData) {
+  // Guests and logged-in customers can both pay; only the owner / token holder may view.
+  if (!bookingData || !canAccessOrder(bookingData as Booking, user?.id, token)) {
     notFound();
   }
 
@@ -38,7 +40,7 @@ export default async function CheckoutPage(props: CheckoutPageProps) {
 
   // If already confirmed or paid, go to confirmation
   if (booking.payment_status === "paid" || booking.status === "confirmed") {
-    redirect(`/booking/confirmation/${reference}`);
+    redirect(`/booking/confirmation/${reference}${token ? `?t=${token}` : ""}`);
   }
 
   const settings = await getSiteSettings();
@@ -48,14 +50,14 @@ export default async function CheckoutPage(props: CheckoutPageProps) {
     <div className="min-h-screen flex flex-col bg-[#FAF6F0]">
       <Header
         customLogoUrl={settings.brand.logo_url}
-        userEmail={user.email}
+        userEmail={user?.email}
       />
 
       <main className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 py-10 lg:py-14 w-full">
         <nav className="flex items-center space-x-2 text-xs text-[#7A6A5F] mb-6 font-sans">
           <Link href="/" className="hover:text-[#2B211C]">Home</Link>
           <span>/</span>
-          <span className="text-[#2B211C] font-medium">Razorpay Secure Checkout</span>
+          <span className="text-[#2B211C] font-medium">Secure Online Checkout</span>
         </nav>
 
         <div className="mb-6">
@@ -71,6 +73,7 @@ export default async function CheckoutPage(props: CheckoutPageProps) {
           booking={booking}
           razorpayReady={razorpayReady}
           razorpayKeyId={process.env.RAZORPAY_KEY_ID || ""}
+          accessToken={token}
         />
       </main>
 

@@ -13,10 +13,11 @@ import {
 } from "lucide-react";
 import { formatINR } from "@/lib/money";
 import type { ProductWithImages, RentalOption, SiteSettings } from "@/lib/types";
+import type { CustomerPrefill } from "@/lib/customer";
 
 interface BookingCheckoutFormProps {
   product: ProductWithImages & { product_rental_options?: RentalOption[] };
-  user: { id: string; email?: string | null };
+  prefill: CustomerPrefill;
   settings: SiteSettings;
   initialDuration?: number;
   initialSize: string;
@@ -33,7 +34,7 @@ interface BookingCheckoutFormProps {
 
 export function BookingCheckoutForm({
   product,
-  user,
+  prefill,
   settings,
   initialSize,
   initialColor,
@@ -61,12 +62,13 @@ export function BookingCheckoutForm({
   const [customNotes, setCustomNotes] = useState(initialCustomNotes);
 
   // Customer Shipping & Delivery Details
-  const [customerName, setCustomerName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [streetAddress, setStreetAddress] = useState("");
-  const [city, setCity] = useState("");
-  const [stateName, setStateName] = useState("");
-  const [pincode, setPincode] = useState("");
+  const [customerName, setCustomerName] = useState(prefill.name);
+  const [email, setEmail] = useState(prefill.email);
+  const [phone, setPhone] = useState(prefill.phone);
+  const [streetAddress, setStreetAddress] = useState(prefill.address.line1);
+  const [city, setCity] = useState(prefill.address.city);
+  const [stateName, setStateName] = useState(prefill.address.state);
+  const [pincode, setPincode] = useState(prefill.address.pincode);
   const [deliveryNotes, setDeliveryNotes] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -88,8 +90,8 @@ export function BookingCheckoutForm({
     e.preventDefault();
     setErrorMsg(null);
 
-    if (!customerName.trim() || !phone.trim()) {
-      setErrorMsg("Please provide your full recipient name and contact phone number.");
+    if (!customerName.trim() || !phone.trim() || !email.trim()) {
+      setErrorMsg("Please provide your full name, email address and contact phone number.");
       return;
     }
 
@@ -137,7 +139,7 @@ export function BookingCheckoutForm({
           size: isCustom ? "Custom Fit" : size,
           color,
           name: customerName,
-          email: user.email,
+          email: email.trim(),
           phone,
           address: fullAddress,
           notes: formattedNotesParts.join(" | "),
@@ -153,7 +155,7 @@ export function BookingCheckoutForm({
       }
 
       // Direct to Razorpay payment checkout
-      router.push(`/checkout/${data.reference}`);
+      router.push(`/checkout/${data.reference}${data.access_token ? `?t=${data.access_token}` : ""}`);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Order could not be processed.");
     } finally {
@@ -173,6 +175,20 @@ export function BookingCheckoutForm({
             <h2 className="font-serif text-xl text-[#2B211C] font-normal">
               1. Delivery / Shipping Address
             </h2>
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1">
+              Email Address * (order updates are sent here)
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@example.com"
+              className="w-full px-3 py-2 text-xs bg-white border border-[#E8DDD1] rounded-sm text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

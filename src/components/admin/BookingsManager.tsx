@@ -24,6 +24,8 @@ import {
   Copy,
   Check,
   Eye,
+  AlertTriangle,
+  AlertCircle,
 } from "lucide-react";
 import { formatINR } from "@/lib/money";
 import { formatDate } from "@/lib/dates";
@@ -51,6 +53,53 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
 
   // Cancel order modal
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
+
+  // Extract payment analysis for an order
+  const getPaymentInfo = (b: any) => {
+    const isPaid =
+      b.payment_status === "paid" ||
+      (Array.isArray(b.payments) && b.payments.some((p: any) => p.status === "captured"));
+
+    const failedPayment = Array.isArray(b.payments)
+      ? b.payments.find((p: any) => p.status === "failed")
+      : null;
+
+    const isFailed =
+      !isPaid && (b.payment_status === "failed" || Boolean(failedPayment));
+
+    const isRefunded =
+      b.payment_status === "refunded" ||
+      (Array.isArray(b.payments) && b.payments.some((p: any) => p.status === "refunded"));
+
+    const isAwaiting = !isPaid && !isFailed && !isRefunded;
+
+    let failureReason = failedPayment?.error_description || failedPayment?.error_code || null;
+    if (!failureReason && b.admin_notes && b.admin_notes.includes("Payment Failed:")) {
+      const lines = b.admin_notes.split("\n");
+      const failureLine = lines.reverse().find((l: string) => l.includes("Payment Failed:"));
+      if (failureLine) failureReason = failureLine;
+    }
+
+    const latestPayment = Array.isArray(b.payments) && b.payments.length > 0 ? b.payments[0] : null;
+
+    return {
+      isPaid,
+      isFailed,
+      isAwaiting,
+      isRefunded,
+      failureReason,
+      latestPayment,
+    };
+  };
+
+  // Effective status: if paid and pending, it's confirmed
+  const getEffectiveStatus = (b: any): string => {
+    const pay = getPaymentInfo(b);
+    if (pay.isPaid && (b.status === "pending_payment" || b.status === "requested")) {
+      return "confirmed";
+    }
+    return b.status;
+  };
 
   // Helper to extract customization details from JSON or formatted string
   const getCustomization = (b: any): DressCustomization | null => {
@@ -97,22 +146,34 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  // Status counters
+  // Status & payment counters
   const totalCount = bookings.length;
-  const confirmedCount = bookings.filter((b) => b.status === "confirmed").length;
+  const confirmedCount = bookings.filter((b) => getEffectiveStatus(b) === "confirmed").length;
   const inTailoringCount = bookings.filter((b) => b.status === "picked_up").length;
   const shippedCount = bookings.filter((b) => b.status === "returned").length;
   const deliveredCount = bookings.filter((b) => b.status === "completed").length;
-  const pendingCount = bookings.filter((b) => b.status === "pending_payment" || b.status === "requested").length;
+  const awaitingPaymentCount = bookings.filter((b) => getPaymentInfo(b).isAwaiting).length;
+  const paymentFailedCount = bookings.filter((b) => getPaymentInfo(b).isFailed).length;
 
   // Filter bookings client side
   const filteredBookings = bookings.filter((b) => {
-    const matchesStatus =
-      statusFilter === "all"
-        ? true
-        : statusFilter === "pending"
-        ? b.status === "pending_payment" || b.status === "requested"
-        : b.status === statusFilter;
+    const pay = getPaymentInfo(b);
+    const effStatus = getEffectiveStatus(b);
+
+    let matchesStatus = true;
+    if (statusFilter === "confirmed") {
+      matchesStatus = effStatus === "confirmed";
+    } else if (statusFilter === "picked_up") {
+      matchesStatus = b.status === "picked_up";
+    } else if (statusFilter === "returned") {
+      matchesStatus = b.status === "returned";
+    } else if (statusFilter === "completed") {
+      matchesStatus = b.status === "completed";
+    } else if (statusFilter === "awaiting_payment") {
+      matchesStatus = pay.isAwaiting;
+    } else if (statusFilter === "payment_failed") {
+      matchesStatus = pay.isFailed;
+    }
 
     const cat = getCategory(b);
     const matchesCategory =
@@ -130,7 +191,9 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
       b.customer_phone?.toLowerCase().includes(q) ||
       b.customer_email?.toLowerCase().includes(q) ||
       b.product_name?.toLowerCase().includes(q) ||
-      (b.notes && b.notes.toLowerCase().includes(q));
+      (b.notes && b.notes.toLowerCase().includes(q)) ||
+      (pay.latestPayment?.razorpay_payment_id && pay.latestPayment.razorpay_payment_id.toLowerCase().includes(q)) ||
+      (pay.latestPayment?.razorpay_order_id && pay.latestPayment.razorpay_order_id.toLowerCase().includes(q));
 
     return matchesStatus && matchesCategory && matchesSearch;
   });
@@ -153,6 +216,7 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
         const updated = {
           ...selectedBooking,
           status: newStatus as any,
+          ...(newStatus === "confirmed" ? { payment_status: "paid" } : {}),
           admin_notes: transitionNote || selectedBooking.admin_notes,
         };
         setBookings(bookings.map((b) => (b.id === selectedBooking.id ? updated : b)));
@@ -174,10 +238,10 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
             Store Management
           </span>
           <h1 className="font-serif text-2xl sm:text-3xl text-[#2B211C] font-normal tracking-tight mt-1">
-            Orders
+            Orders &amp; Payments
           </h1>
           <p className="text-xs text-[#7A6A5F] mt-1">
-            Track client purchases, custom dress tailoring dimensions, Razorpay transactions, and courier delivery fulfillment.
+            Real-time tracking of Razorpay payments, customer details, custom tailoring dimensions, and delivery fulfillment.
           </p>
         </div>
 
@@ -187,9 +251,9 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
             <span className="text-[#7A6A5F]">Total:</span>
             <strong className="font-semibold">{totalCount}</strong>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50/80 border border-emerald-200/80 rounded-sm text-xs text-emerald-900 shadow-2xs">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50/90 border border-emerald-200 rounded-sm text-xs text-emerald-900 shadow-2xs">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-            <span>Confirmed:</span>
+            <span>Confirmed &amp; Paid:</span>
             <strong className="font-semibold">{confirmedCount}</strong>
           </div>
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50/80 border border-amber-200/80 rounded-sm text-xs text-amber-900 shadow-2xs">
@@ -206,6 +270,13 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
             <span>Delivered:</span>
             <strong className="font-semibold">{deliveredCount}</strong>
           </div>
+          {paymentFailedCount > 0 && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 rounded-sm text-xs text-red-900 shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
+              <span>Failed:</span>
+              <strong className="font-semibold">{paymentFailedCount}</strong>
+            </div>
+          )}
         </div>
       </div>
 
@@ -220,7 +291,7 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by order ref, client name, phone, item, or measurements..."
+                placeholder="Search by ref, client, phone, item, or Razorpay ID..."
                 className="w-full text-xs bg-transparent focus:outline-hidden text-[#2B211C] placeholder:text-[#7A6A5F]/70"
               />
               {searchQuery && (
@@ -252,11 +323,14 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 shrink-0">
           {[
             { id: "all", label: "All Orders", count: totalCount },
-            { id: "confirmed", label: "Confirmed", count: confirmedCount },
+            { id: "confirmed", label: "Paid & Confirmed", count: confirmedCount },
             { id: "picked_up", label: "In Tailoring", count: inTailoringCount },
             { id: "returned", label: "Shipped", count: shippedCount },
             { id: "completed", label: "Delivered", count: deliveredCount },
-            { id: "pending", label: "Pending", count: pendingCount },
+            { id: "awaiting_payment", label: "Awaiting Payment", count: awaitingPaymentCount },
+            ...(paymentFailedCount > 0
+              ? [{ id: "payment_failed", label: "Payment Failed", count: paymentFailedCount, isDanger: true }]
+              : []),
           ].map((tab) => {
             const isSelected = statusFilter === tab.id;
             return (
@@ -265,7 +339,11 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
                 onClick={() => setStatusFilter(tab.id)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-sm transition-all whitespace-nowrap shadow-2xs ${
                   isSelected
-                    ? "bg-[#2B211C] text-[#FAF6F0]"
+                    ? (tab as any).isDanger
+                      ? "bg-red-700 text-white"
+                      : "bg-[#2B211C] text-[#FAF6F0]"
+                    : (tab as any).isDanger
+                    ? "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
                     : "bg-[#FFFDF9] text-[#7A6A5F] border border-[#E8DDD1] hover:bg-[#FAF6F0] hover:text-[#2B211C]"
                 }`}
               >
@@ -273,7 +351,9 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
                 <span
                   className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
                     isSelected
-                      ? "bg-[#FAF6F0]/20 text-[#FAF6F0]"
+                      ? "bg-white/20 text-white"
+                      : (tab as any).isDanger
+                      ? "bg-red-100 text-red-800"
                       : "bg-[#FAF6F0] text-[#7A6A5F] border border-[#E8DDD1]"
                   }`}
                 >
@@ -299,8 +379,8 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
                     <th className="py-3 px-4 font-semibold">Purchased Item</th>
                     <th className="py-3 px-4 font-semibold">Fit / Customization</th>
                     <th className="py-3 px-4 font-semibold">Amount</th>
-                    <th className="py-3 px-4 font-semibold">Payment</th>
-                    <th className="py-3 px-4 font-semibold">Status</th>
+                    <th className="py-3 px-4 font-semibold">Payment Status</th>
+                    <th className="py-3 px-4 font-semibold">Order Status</th>
                     <th className="py-3 px-4 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
@@ -310,8 +390,8 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
                     const isOrnament = cat === "ornament" || cat === "ornaments";
                     const custom = getCustomization(b);
                     const img = getProductImage(b);
-                    const paymentLabel = PAYMENT_STATUS_LABEL[b.payment_status as PaymentStatus] || b.payment_status;
-                    const statusLabel = BOOKING_STATUS_LABEL[b.status as BookingStatus] || b.status;
+                    const pay = getPaymentInfo(b);
+                    const effStatus = getEffectiveStatus(b);
 
                     return (
                       <tr
@@ -399,41 +479,74 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
                           )}
                         </td>
 
-                        {/* Total Paid */}
+                        {/* Total Amount */}
                         <td className="py-3 px-4 font-sans font-semibold text-xs whitespace-nowrap">
                           {formatINR(b.total_paise)}
                         </td>
 
-                        {/* Razorpay Payment Status */}
+                        {/* Payment Status (Production Clarity) */}
                         <td className="py-3 px-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 py-0.5 rounded-xs text-[10px] font-semibold uppercase tracking-wider ${
-                              b.payment_status === "paid"
-                                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                                : "bg-amber-50 text-amber-800 border border-amber-200"
-                            }`}
-                          >
-                            {paymentLabel}
-                          </span>
+                          {pay.isPaid ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xs text-[10px] font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <span>PAID VIA RAZORPAY</span>
+                            </span>
+                          ) : pay.isFailed ? (
+                            <div className="space-y-0.5">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xs text-[10px] font-semibold uppercase tracking-wider bg-red-50 text-red-800 border border-red-300">
+                                <XCircle className="w-3 h-3 text-red-600 shrink-0" />
+                                <span>PAYMENT FAILED</span>
+                              </span>
+                              {pay.failureReason && (
+                                <span className="block text-[10px] text-red-700/80 truncate max-w-[150px]" title={pay.failureReason}>
+                                  {pay.failureReason}
+                                </span>
+                              )}
+                            </div>
+                          ) : pay.isRefunded ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xs text-[10px] font-semibold uppercase tracking-wider bg-purple-50 text-purple-800 border border-purple-200">
+                              <RotateCcw className="w-3 h-3 text-purple-600 shrink-0" />
+                              <span>REFUNDED</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xs text-[10px] font-semibold uppercase tracking-wider bg-amber-50 text-amber-900 border border-amber-200">
+                              <Clock className="w-3 h-3 text-amber-600 shrink-0" />
+                              <span>AWAITING PAYMENT</span>
+                            </span>
+                          )}
                         </td>
 
-                        {/* Order Pipeline Status */}
+                        {/* Order Status */}
                         <td className="py-3 px-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 py-0.5 rounded-xs text-[11px] font-medium ${
-                              b.status === "confirmed"
-                                ? "bg-emerald-100 text-emerald-900 border border-emerald-200"
-                                : b.status === "picked_up"
-                                ? "bg-amber-100 text-amber-900 border border-amber-200"
-                                : b.status === "returned"
-                                ? "bg-blue-100 text-blue-900 border border-blue-200"
-                                : b.status === "completed"
-                                ? "bg-stone-100 text-stone-900 border border-stone-200"
-                                : "bg-[#F4ECE1] text-[#2B211C]"
-                            }`}
-                          >
-                            {statusLabel}
-                          </span>
+                          {effStatus === "confirmed" ? (
+                            <span className="px-2.5 py-1 rounded-xs text-[11px] font-medium bg-emerald-100 text-emerald-900 border border-emerald-200 inline-block">
+                              Confirmed
+                            </span>
+                          ) : effStatus === "picked_up" ? (
+                            <span className="px-2.5 py-1 rounded-xs text-[11px] font-medium bg-amber-100 text-amber-900 border border-amber-200 inline-block">
+                              In Tailoring
+                            </span>
+                          ) : effStatus === "returned" ? (
+                            <span className="px-2.5 py-1 rounded-xs text-[11px] font-medium bg-blue-100 text-blue-900 border border-blue-200 inline-block">
+                              Shipped
+                            </span>
+                          ) : effStatus === "completed" ? (
+                            <span className="px-2.5 py-1 rounded-xs text-[11px] font-medium bg-stone-100 text-stone-900 border border-stone-200 inline-block">
+                              Delivered
+                            </span>
+                          ) : effStatus === "cancelled" ? (
+                            <span className="px-2.5 py-1 rounded-xs text-[11px] font-medium bg-red-100 text-red-900 border border-red-200 inline-block">
+                              Cancelled
+                            </span>
+                          ) : pay.isFailed ? (
+                            <span className="px-2.5 py-1 rounded-xs text-[11px] font-medium bg-red-50 text-red-800 border border-red-200 inline-block">
+                              Payment Failed
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-xs text-[11px] font-medium bg-[#FAF6F0] text-[#7A6A5F] border border-[#E8DDD1] inline-block">
+                              Awaiting Payment
+                            </span>
+                          )}
                         </td>
 
                         {/* Actions */}
@@ -464,8 +577,8 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
                 const isOrnament = cat === "ornament" || cat === "ornaments";
                 const custom = getCustomization(b);
                 const img = getProductImage(b);
-                const paymentLabel = PAYMENT_STATUS_LABEL[b.payment_status as PaymentStatus] || b.payment_status;
-                const statusLabel = BOOKING_STATUS_LABEL[b.status as BookingStatus] || b.status;
+                const pay = getPaymentInfo(b);
+                const effStatus = getEffectiveStatus(b);
 
                 return (
                   <div
@@ -482,15 +595,19 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
                           {isOrnament ? "Ornament" : "Dress"}
                         </span>
                       </div>
-                      <span
-                        className={`px-1.5 py-0.5 rounded-xs text-[9px] font-semibold uppercase tracking-wider ${
-                          b.payment_status === "paid"
-                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                            : "bg-amber-50 text-amber-800 border border-amber-200"
-                        }`}
-                      >
-                        {paymentLabel}
-                      </span>
+                      {pay.isPaid ? (
+                        <span className="px-2 py-0.5 rounded-xs text-[9px] font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          PAID
+                        </span>
+                      ) : pay.isFailed ? (
+                        <span className="px-2 py-0.5 rounded-xs text-[9px] font-semibold uppercase tracking-wider bg-red-50 text-red-800 border border-red-200">
+                          FAILED
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-xs text-[9px] font-semibold uppercase tracking-wider bg-amber-50 text-amber-900 border border-amber-200">
+                          UNPAID
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex gap-3 items-start">
@@ -556,79 +673,81 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
       </div>
 
       {/* 04. Detailed Order Inspection Modal */}
-      {selectedBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
-            onClick={() => setSelectedBooking(null)}
-            aria-hidden="true"
-          />
+      {selectedBooking && (() => {
+        const pay = getPaymentInfo(selectedBooking);
+        const effStatus = getEffectiveStatus(selectedBooking);
+        const custom = getCustomization(selectedBooking);
 
-          <div className="relative bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm shadow-2xl max-w-3xl w-full p-6 sm:p-8 z-10 max-h-[92vh] overflow-y-auto space-y-6 animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="flex items-start justify-between pb-4 border-b border-[#E8DDD1]">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-mono text-xs font-semibold text-[#B06F5E]">
-                    {selectedBooking.reference}
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-xs bg-[#FAF6F0] border border-[#E8DDD1] uppercase font-semibold text-[#7A6A5F]">
-                    {getCategory(selectedBooking) === "dress" ? "Bespoke Dress Order" : "Fine Ornament Order"}
-                  </span>
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
+              onClick={() => setSelectedBooking(null)}
+              aria-hidden="true"
+            />
+
+            <div className="relative bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm shadow-2xl max-w-3xl w-full p-6 sm:p-8 z-10 max-h-[92vh] overflow-y-auto space-y-6 animate-in zoom-in-95 duration-200">
+              {/* Modal Header */}
+              <div className="flex items-start justify-between pb-4 border-b border-[#E8DDD1]">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-mono text-xs font-semibold text-[#B06F5E]">
+                      {selectedBooking.reference}
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-xs bg-[#FAF6F0] border border-[#E8DDD1] uppercase font-semibold text-[#7A6A5F]">
+                      {getCategory(selectedBooking) === "dress" ? "Bespoke Dress Order" : "Fine Ornament Order"}
+                    </span>
+                  </div>
+                  <h3 className="font-serif text-2xl text-[#2B211C]">
+                    {selectedBooking.product_name}
+                  </h3>
+                  <p className="text-xs text-[#7A6A5F] mt-0.5">
+                    Ordered on {formatDate(selectedBooking.created_at)}
+                  </p>
                 </div>
-                <h3 className="font-serif text-2xl text-[#2B211C]">
-                  {selectedBooking.product_name}
-                </h3>
-                <p className="text-xs text-[#7A6A5F] mt-0.5">
-                  Ordered on {formatDate(selectedBooking.created_at)}
-                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedBooking(null)}
+                  className="p-1.5 text-[#7A6A5F] hover:text-[#2B211C] hover:bg-[#FAF6F0] rounded-sm transition-colors"
+                  aria-label="Close modal"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedBooking(null)}
-                className="p-1.5 text-[#7A6A5F] hover:text-[#2B211C] hover:bg-[#FAF6F0] rounded-sm transition-colors"
-                aria-label="Close modal"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Grid 2 Columns: Item & Customization | Client Shipping & Razorpay */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Left Column: Product & Customization Details */}
-              <div className="p-4 bg-[#FAF6F0] rounded-xs border border-[#E8DDD1] space-y-3 text-xs">
-                <div className="flex items-center gap-2 pb-2 border-b border-[#E8DDD1] font-semibold uppercase text-[10px] text-[#B06F5E]">
-                  <ShoppingBag className="w-4 h-4" />
-                  <span>Item &amp; Customization Specifications</span>
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex justify-between">
-                    <span className="text-[#7A6A5F]">Product Name:</span>
-                    <strong className="text-[#2B211C] font-serif">{selectedBooking.product_name}</strong>
+              {/* Grid 2 Columns: Item & Customization | Client Shipping & Razorpay */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Left Column: Product & Customization Details */}
+                <div className="p-4 bg-[#FAF6F0] rounded-xs border border-[#E8DDD1] space-y-3 text-xs">
+                  <div className="flex items-center gap-2 pb-2 border-b border-[#E8DDD1] font-semibold uppercase text-[10px] text-[#B06F5E]">
+                    <ShoppingBag className="w-4 h-4" />
+                    <span>Item Specifications</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#7A6A5F]">Category:</span>
-                    <span className="font-medium capitalize">{getCategory(selectedBooking)}</span>
-                  </div>
-                  {selectedBooking.color && (
+
+                  <div className="space-y-1.5">
                     <div className="flex justify-between">
-                      <span className="text-[#7A6A5F]">Color:</span>
-                      <span className="font-medium text-[#2B211C]">{selectedBooking.color}</span>
+                      <span className="text-[#7A6A5F]">Product:</span>
+                      <strong className="text-[#2B211C] font-serif">{selectedBooking.product_name}</strong>
                     </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-[#7A6A5F]">Size Choice:</span>
-                    <span className="font-medium text-[#2B211C]">{selectedBooking.size || "Standard"}</span>
+                    <div className="flex justify-between">
+                      <span className="text-[#7A6A5F]">Category:</span>
+                      <span className="font-medium capitalize">{getCategory(selectedBooking)}</span>
+                    </div>
+                    {selectedBooking.color && (
+                      <div className="flex justify-between">
+                        <span className="text-[#7A6A5F]">Color:</span>
+                        <span className="font-medium text-[#2B211C]">{selectedBooking.color}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-[#7A6A5F]">Size Choice:</span>
+                      <span className="font-medium text-[#2B211C]">{selectedBooking.size || "Standard"}</span>
+                    </div>
                   </div>
-                </div>
 
-                {/* If Dress has Custom Measurements */}
-                {(() => {
-                  const custom = getCustomization(selectedBooking);
-                  if (!custom) return null;
-                  return (
+                  {/* If Dress has Custom Measurements */}
+                  {custom && (
                     <div className="mt-3 p-3 bg-white rounded-xs border border-amber-200 space-y-2">
                       <span className="text-[10px] font-sans font-semibold uppercase tracking-wider text-amber-900 block">
                         Bespoke Tailoring Measurements:
@@ -662,214 +781,272 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
                         </div>
                       )}
                     </div>
-                  );
-                })()}
+                  )}
 
-                {selectedBooking.notes && (
-                  <div className="pt-2 border-t border-[#E8DDD1] text-[11px]">
-                    <span className="text-[#7A6A5F] font-medium block">Order Notes:</span>
-                    <p className="mt-0.5 text-[#2B211C]">{selectedBooking.notes}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Right Column: Customer Shipping & Razorpay Payment */}
-              <div className="space-y-4">
-                {/* Customer Contact & Address */}
-                <div className="p-4 bg-[#FAF6F0] rounded-xs border border-[#E8DDD1] space-y-2.5 text-xs">
-                  <div className="flex items-center gap-2 pb-2 border-b border-[#E8DDD1] font-semibold uppercase text-[10px] text-[#B06F5E]">
-                    <MapPin className="w-4 h-4" />
-                    <span>Customer &amp; Shipping Details</span>
-                  </div>
-
-                  <div>
-                    <span className="text-[#7A6A5F] text-[10px] uppercase block">Client Name</span>
-                    <span className="font-medium text-[#2B211C] text-sm">{selectedBooking.customer_name}</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <div>
-                      <span className="text-[#7A6A5F] text-[10px] uppercase block">Phone</span>
-                      <a href={`tel:${selectedBooking.customer_phone}`} className="text-[#B06F5E] hover:underline font-mono">
-                        {selectedBooking.customer_phone}
-                      </a>
-                    </div>
-                    <div>
-                      <span className="text-[#7A6A5F] text-[10px] uppercase block">Email Address</span>
-                      <a href={`mailto:${selectedBooking.customer_email}`} className="text-[#7A6A5F] hover:underline truncate block">
-                        {selectedBooking.customer_email}
-                      </a>
-                    </div>
-                  </div>
-
-                  {selectedBooking.customer_phone && (
-                    <div className="pt-1">
-                      <a
-                        href={`https://wa.me/${getCleanPhone(selectedBooking.customer_phone)}?text=Hello%20${encodeURIComponent(
-                          selectedBooking.customer_name
-                        )},%20regarding%20your%20Haya%20order%20${selectedBooking.reference}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xs text-xs font-medium transition-colors"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        <span>Chat on WhatsApp</span>
-                      </a>
+                  {selectedBooking.notes && (
+                    <div className="pt-2 border-t border-[#E8DDD1] text-[11px]">
+                      <span className="text-[#7A6A5F] font-medium block">Order Notes:</span>
+                      <p className="mt-0.5 text-[#2B211C]">{selectedBooking.notes}</p>
                     </div>
                   )}
 
-                  <div className="pt-1">
-                    <span className="text-[#7A6A5F] text-[10px] uppercase block">Delivery Shipping Address</span>
-                    <p className="text-[#2B211C] mt-0.5 bg-white p-2.5 rounded-xs border border-[#E8DDD1] leading-relaxed">
-                      {selectedBooking.customer_address || "No delivery address provided."}
-                    </p>
-                  </div>
+                  {selectedBooking.admin_notes && (
+                    <div className="pt-2 border-t border-[#E8DDD1] text-[11px] bg-white p-2.5 rounded-xs border border-stone-200">
+                      <span className="text-[#7A6A5F] font-semibold block uppercase text-[10px]">System &amp; Admin Audit Notes:</span>
+                      <p className="mt-1 text-[#2B211C] whitespace-pre-wrap font-mono text-[10px]">{selectedBooking.admin_notes}</p>
+                    </div>
+                  )}
                 </div>
 
-                {/* Razorpay Payment Information */}
-                <div className="p-4 bg-white rounded-xs border border-[#E8DDD1] space-y-2 text-xs">
-                  <div className="flex items-center justify-between pb-2 border-b border-[#E8DDD1]">
-                    <div className="flex items-center gap-2 font-semibold uppercase text-[10px] text-[#B06F5E]">
-                      <CreditCard className="w-4 h-4" />
-                      <span>Razorpay Online Payment</span>
+                {/* Right Column: Customer Shipping & Razorpay Payment */}
+                <div className="space-y-4">
+                  {/* Customer Contact & Address */}
+                  <div className="p-4 bg-[#FAF6F0] rounded-xs border border-[#E8DDD1] space-y-2.5 text-xs">
+                    <div className="flex items-center gap-2 pb-2 border-b border-[#E8DDD1] font-semibold uppercase text-[10px] text-[#B06F5E]">
+                      <MapPin className="w-4 h-4" />
+                      <span>Customer &amp; Shipping Details</span>
                     </div>
-                    <span
-                      className={`px-1.5 py-0.5 rounded-xs text-[9px] font-semibold uppercase tracking-wider ${
-                        selectedBooking.payment_status === "paid"
-                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                          : "bg-amber-50 text-amber-800 border border-amber-200"
-                      }`}
-                    >
-                      {PAYMENT_STATUS_LABEL[selectedBooking.payment_status as PaymentStatus] || selectedBooking.payment_status}
-                    </span>
-                  </div>
 
-                  <div className="space-y-1.5 pt-2 border-t border-[#E8DDD1]/80 text-xs">
-                    <div className="flex justify-between text-[#7A6A5F]">
-                      <span>Item Amount:</span>
-                      <span className="font-medium text-[#2B211C]">
-                        {formatINR(selectedBooking.rental_amount_paise || (selectedBooking.total_paise - (selectedBooking.fees_paise || 0)))}
-                      </span>
+                    <div>
+                      <span className="text-[#7A6A5F] text-[10px] uppercase block">Client Name</span>
+                      <span className="font-medium text-[#2B211C] text-sm">{selectedBooking.customer_name}</span>
                     </div>
-                    <div className="flex justify-between text-[#7A6A5F]">
-                      <span>Shipping Charge:</span>
-                      <span className="font-medium text-[#2B211C]">
-                        {formatINR(selectedBooking.fees_paise || 0)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-[#7A6A5F]">
-                      <span>GST / Taxes:</span>
-                      <span className="font-medium text-emerald-700">₹0 (Zero GST)</span>
-                    </div>
-                  </div>
 
-                  <div className="flex justify-between items-baseline pt-2 border-t border-[#E8DDD1]">
-                    <span className="text-[#2B211C] font-semibold">Total Paid:</span>
-                    <span className="font-bold text-base text-[#B06F5E] font-sans">
-                      {formatINR(selectedBooking.total_paise)}
-                    </span>
-                  </div>
-
-                  {selectedBooking.payments && selectedBooking.payments.length > 0 && (
-                    <div className="pt-2 border-t border-[#E8DDD1] space-y-1 text-[11px] text-[#7A6A5F]">
-                      <div className="flex justify-between">
-                        <span>Razorpay Order ID:</span>
-                        <code className="text-[#2B211C] font-mono">{selectedBooking.payments[0].razorpay_order_id}</code>
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div>
+                        <span className="text-[#7A6A5F] text-[10px] uppercase block">Phone</span>
+                        <a href={`tel:${selectedBooking.customer_phone}`} className="text-[#B06F5E] hover:underline font-mono">
+                          {selectedBooking.customer_phone}
+                        </a>
                       </div>
-                      {selectedBooking.payments[0].razorpay_payment_id && (
-                        <div className="flex justify-between">
-                          <span>Razorpay Payment ID:</span>
-                          <code className="text-[#2B211C] font-mono">{selectedBooking.payments[0].razorpay_payment_id}</code>
+                      <div>
+                        <span className="text-[#7A6A5F] text-[10px] uppercase block">Email Address</span>
+                        <a href={`mailto:${selectedBooking.customer_email}`} className="text-[#7A6A5F] hover:underline truncate block">
+                          {selectedBooking.customer_email}
+                        </a>
+                      </div>
+                    </div>
+
+                    {selectedBooking.customer_phone && (
+                      <div className="pt-1">
+                        <a
+                          href={`https://wa.me/${getCleanPhone(selectedBooking.customer_phone)}?text=Hello%20${encodeURIComponent(
+                            selectedBooking.customer_name
+                          )},%20regarding%20your%20Haya%20order%20${selectedBooking.reference}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xs text-xs font-medium transition-colors"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          <span>Chat on WhatsApp</span>
+                        </a>
+                      </div>
+                    )}
+
+                    <div className="pt-1">
+                      <span className="text-[#7A6A5F] text-[10px] uppercase block">Delivery Shipping Address</span>
+                      <p className="text-[#2B211C] mt-0.5 bg-white p-2.5 rounded-xs border border-[#E8DDD1] leading-relaxed">
+                        {selectedBooking.customer_address || "No delivery address provided."}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Razorpay Online Payment Box */}
+                  <div className="p-4 bg-white rounded-xs border border-[#E8DDD1] space-y-3 text-xs shadow-2xs">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#E8DDD1]">
+                      <div className="flex items-center gap-2 font-semibold uppercase text-[10px] text-[#B06F5E]">
+                        <CreditCard className="w-4 h-4" />
+                        <span>Razorpay Online Payment</span>
+                      </div>
+                      {pay.isPaid ? (
+                        <span className="px-2 py-0.5 rounded-xs text-[10px] font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>PAID</span>
+                        </span>
+                      ) : pay.isFailed ? (
+                        <span className="px-2 py-0.5 rounded-xs text-[10px] font-semibold uppercase tracking-wider bg-red-50 text-red-800 border border-red-300 flex items-center gap-1">
+                          <XCircle className="w-3 h-3 text-red-600" />
+                          <span>FAILED</span>
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-xs text-[10px] font-semibold uppercase tracking-wider bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-amber-600" />
+                          <span>UNPAID</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Breakdown */}
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex justify-between text-[#7A6A5F]">
+                        <span>Item Price:</span>
+                        <span className="font-medium text-[#2B211C]">
+                          {formatINR(selectedBooking.rental_amount_paise || (selectedBooking.total_paise - (selectedBooking.fees_paise || 0)))}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[#7A6A5F]">
+                        <span>Insured Express Shipping:</span>
+                        <span className="font-medium text-[#2B211C]">
+                          {formatINR(selectedBooking.fees_paise || 0)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[#7A6A5F]">
+                        <span>GST / Taxes:</span>
+                        <span className="font-medium text-emerald-700">₹0 (Zero GST)</span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-baseline pt-2 border-t border-[#E8DDD1]">
+                      <span className="text-[#2B211C] font-semibold">Total Order Value:</span>
+                      <span className="font-bold text-base text-[#B06F5E] font-sans">
+                        {formatINR(selectedBooking.total_paise)}
+                      </span>
+                    </div>
+
+                    {/* Razorpay Transaction Identifiers */}
+                    <div className="pt-2 border-t border-[#E8DDD1] space-y-1.5 text-[11px] bg-[#FAF6F0] p-2.5 rounded-xs border border-[#E8DDD1]/80">
+                      {pay.latestPayment?.razorpay_order_id && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-[#7A6A5F]">Razorpay Order ID:</span>
+                          <div className="flex items-center gap-1 font-mono text-[#2B211C]">
+                            <span>{pay.latestPayment.razorpay_order_id}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => copyToClipboard(pay.latestPayment.razorpay_order_id, "order_id", e)}
+                              className="text-[#7A6A5F] hover:text-[#2B211C]"
+                              title="Copy Order ID"
+                            >
+                              {copiedField === "order_id" ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                            </button>
+                          </div>
                         </div>
                       )}
-                      {selectedBooking.payments[0].method && (
+
+                      {pay.latestPayment?.razorpay_payment_id && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-[#7A6A5F]">Razorpay Payment ID:</span>
+                          <div className="flex items-center gap-1 font-mono text-emerald-700 font-semibold">
+                            <span>{pay.latestPayment.razorpay_payment_id}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => copyToClipboard(pay.latestPayment.razorpay_payment_id, "pay_id", e)}
+                              className="text-[#7A6A5F] hover:text-[#2B211C]"
+                              title="Copy Payment ID"
+                            >
+                              {copiedField === "pay_id" ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {pay.latestPayment?.method && (
                         <div className="flex justify-between">
-                          <span>Payment Method:</span>
-                          <span className="capitalize font-medium text-[#2B211C]">{selectedBooking.payments[0].method}</span>
+                          <span className="text-[#7A6A5F]">Payment Method:</span>
+                          <span className="capitalize font-medium text-[#2B211C]">{pay.latestPayment.method}</span>
+                        </div>
+                      )}
+
+                      {pay.latestPayment?.verified_at && (
+                        <div className="flex justify-between">
+                          <span className="text-[#7A6A5F]">Verified At:</span>
+                          <span className="text-[#2B211C]">{formatDate(pay.latestPayment.verified_at)}</span>
+                        </div>
+                      )}
+
+                      {/* Explicit failure notice */}
+                      {pay.isFailed && (
+                        <div className="mt-2 pt-2 border-t border-red-200 text-red-800 space-y-1">
+                          <div className="flex items-center gap-1 font-semibold text-[10px] uppercase">
+                            <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                            <span>Payment Gateway Error Details:</span>
+                          </div>
+                          <p className="text-[11px] leading-relaxed bg-red-50 p-2 rounded-xs border border-red-200">
+                            {pay.failureReason || "The payment authorization failed or was declined at the bank."}
+                          </p>
                         </div>
                       )}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Order Lifecycle Status Actions */}
-            <div className="space-y-3 pt-4 border-t border-[#E8DDD1]">
-              <div className="flex items-center justify-between">
-                <h4 className="font-serif text-base text-[#2B211C]">
-                  Update Order Pipeline Status
-                </h4>
-                <span className="text-xs text-[#7A6A5F]">
-                  Current Status: <strong className="text-[#2B211C]">{BOOKING_STATUS_LABEL[selectedBooking.status as BookingStatus] || selectedBooking.status}</strong>
-                </span>
-              </div>
+              {/* Order Lifecycle Status Actions */}
+              <div className="space-y-3 pt-4 border-t border-[#E8DDD1]">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-serif text-base text-[#2B211C]">
+                    Update Order Pipeline Status
+                  </h4>
+                  <span className="text-xs text-[#7A6A5F]">
+                    Current Status: <strong className="text-[#2B211C]">{effStatus === "confirmed" ? "Confirmed" : BOOKING_STATUS_LABEL[selectedBooking.status as BookingStatus] || selectedBooking.status}</strong>
+                  </span>
+                </div>
 
-              <div>
-                <label className="block text-[11px] uppercase tracking-wider text-[#7A6A5F] mb-1">
-                  Optional Status Transition Note (e.g. Courier Tracking Number or Tailoring Update)
-                </label>
-                <input
-                  type="text"
-                  value={transitionNote}
-                  onChange={(e) => setTransitionNote(e.target.value)}
-                  placeholder="e.g. Dispatched via BlueDart courier tracking #12345..."
-                  className="w-full text-xs bg-white border border-[#E8DDD1] rounded-sm px-3 py-2 text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
-                />
-              </div>
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-[#7A6A5F] mb-1">
+                    Status Transition Note (e.g. Courier Tracking Number or Tailoring Update)
+                  </label>
+                  <input
+                    type="text"
+                    value={transitionNote}
+                    onChange={(e) => setTransitionNote(e.target.value)}
+                    placeholder="e.g. Dispatched via BlueDart tracking #9823423..."
+                    className="w-full text-xs bg-white border border-[#E8DDD1] rounded-sm px-3 py-2 text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
+                  />
+                </div>
 
-              <div className="flex flex-wrap items-center gap-2 pt-2">
-                <button
-                  type="button"
-                  disabled={updating || selectedBooking.status === "confirmed"}
-                  onClick={() => handleUpdateStatus("confirmed")}
-                  className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xs text-xs font-medium transition-colors disabled:opacity-40"
-                >
-                  Payment Received / Confirmed
-                </button>
+                <div className="flex flex-wrap items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    disabled={updating || effStatus === "confirmed"}
+                    onClick={() => handleUpdateStatus("confirmed")}
+                    className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xs text-xs font-medium transition-colors disabled:opacity-40"
+                  >
+                    Confirm Order &amp; Payment
+                  </button>
 
-                <button
-                  type="button"
-                  disabled={updating || selectedBooking.status === "picked_up"}
-                  onClick={() => handleUpdateStatus("picked_up")}
-                  className="px-3.5 py-2 bg-[#B06F5E] hover:bg-[#975D4E] text-white rounded-xs text-xs font-medium transition-colors disabled:opacity-40 flex items-center gap-1.5"
-                >
-                  <Scissors className="w-3.5 h-3.5" />
-                  <span>In Production / Tailoring</span>
-                </button>
+                  <button
+                    type="button"
+                    disabled={updating || selectedBooking.status === "picked_up"}
+                    onClick={() => handleUpdateStatus("picked_up")}
+                    className="px-3.5 py-2 bg-[#B06F5E] hover:bg-[#975D4E] text-white rounded-xs text-xs font-medium transition-colors disabled:opacity-40 flex items-center gap-1.5"
+                  >
+                    <Scissors className="w-3.5 h-3.5" />
+                    <span>In Production / Tailoring</span>
+                  </button>
 
-                <button
-                  type="button"
-                  disabled={updating || selectedBooking.status === "returned"}
-                  onClick={() => handleUpdateStatus("returned")}
-                  className="px-3.5 py-2 bg-[#2B211C] hover:bg-black text-white rounded-xs text-xs font-medium transition-colors disabled:opacity-40 flex items-center gap-1.5"
-                >
-                  <Truck className="w-3.5 h-3.5" />
-                  <span>Shipped / In Transit</span>
-                </button>
+                  <button
+                    type="button"
+                    disabled={updating || selectedBooking.status === "returned"}
+                    onClick={() => handleUpdateStatus("returned")}
+                    className="px-3.5 py-2 bg-[#2B211C] hover:bg-black text-white rounded-xs text-xs font-medium transition-colors disabled:opacity-40 flex items-center gap-1.5"
+                  >
+                    <Truck className="w-3.5 h-3.5" />
+                    <span>Shipped / In Transit</span>
+                  </button>
 
-                <button
-                  type="button"
-                  disabled={updating || selectedBooking.status === "completed"}
-                  onClick={() => handleUpdateStatus("completed")}
-                  className="px-3.5 py-2 bg-stone-700 hover:bg-stone-800 text-white rounded-xs text-xs font-medium transition-colors disabled:opacity-40"
-                >
-                  Delivered / Fulfilled
-                </button>
+                  <button
+                    type="button"
+                    disabled={updating || selectedBooking.status === "completed"}
+                    onClick={() => handleUpdateStatus("completed")}
+                    className="px-3.5 py-2 bg-stone-700 hover:bg-stone-800 text-white rounded-xs text-xs font-medium transition-colors disabled:opacity-40"
+                  >
+                    Delivered / Fulfilled
+                  </button>
 
-                <button
-                  type="button"
-                  disabled={updating || selectedBooking.status === "cancelled"}
-                  onClick={() => setCancelModalOpen(true)}
-                  className="px-3.5 py-2 border border-red-300 text-red-700 hover:bg-red-50 rounded-xs text-xs font-medium transition-colors disabled:opacity-40 ml-auto"
-                >
-                  Cancel Order
-                </button>
+                  <button
+                    type="button"
+                    disabled={updating || selectedBooking.status === "cancelled"}
+                    onClick={() => setCancelModalOpen(true)}
+                    className="px-3.5 py-2 border border-red-300 text-red-700 hover:bg-red-50 rounded-xs text-xs font-medium transition-colors disabled:opacity-40 ml-auto"
+                  >
+                    Cancel Order
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Cancel Order Confirmation Modal */}
       <ConfirmDialogModal
