@@ -12,7 +12,6 @@ import {
   Clock,
   CreditCard,
   X,
-  Scissors,
   ShoppingBag,
   MapPin,
   Phone,
@@ -26,18 +25,24 @@ import {
   Eye,
   AlertTriangle,
   AlertCircle,
+  Printer,
+  FileText,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { formatINR } from "@/lib/money";
 import { formatDate } from "@/lib/dates";
 import { BOOKING_STATUS_LABEL, PAYMENT_STATUS_LABEL } from "@/lib/labels";
 import { ConfirmDialogModal } from "@/components/admin/ConfirmDialogModal";
+import { OrderInvoiceModal } from "@/components/admin/OrderInvoiceModal";
 import type { Booking, DressCustomization, BookingStatus, PaymentStatus } from "@/lib/types";
 
 interface BookingsManagerProps {
   initialBookings: any[];
+  siteSettings?: any;
 }
 
-export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) {
+export function BookingsManager({ initialBookings = [], siteSettings }: BookingsManagerProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -50,6 +55,13 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
   const [transitionNote, setTransitionNote] = useState("");
   const [updating, setUpdating] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  // Multi-select for batch actions (e.g. printing invoices)
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+
+  // Invoice modal state
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [invoiceOrders, setInvoiceOrders] = useState<any[]>([]);
 
   // Cancel order modal
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
@@ -149,7 +161,6 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
   // Status & payment counters
   const totalCount = bookings.length;
   const confirmedCount = bookings.filter((b) => getEffectiveStatus(b) === "confirmed").length;
-  const inTailoringCount = bookings.filter((b) => b.status === "picked_up").length;
   const shippedCount = bookings.filter((b) => b.status === "returned").length;
   const deliveredCount = bookings.filter((b) => b.status === "completed").length;
   const awaitingPaymentCount = bookings.filter((b) => getPaymentInfo(b).isAwaiting).length;
@@ -198,6 +209,39 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
     return matchesStatus && matchesCategory && matchesSearch;
   });
 
+  // Selection handlers
+  const handleToggleSelectOne = (id: string) => {
+    setSelectedOrderIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedOrderIds.length === filteredBookings.length) {
+      setSelectedOrderIds([]);
+    } else {
+      setSelectedOrderIds(filteredBookings.map((b) => b.id));
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedOrderIds([]);
+  };
+
+  // Print handlers
+  const handlePrintSingle = (order: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setInvoiceOrders([order]);
+    setInvoiceModalOpen(true);
+  };
+
+  const handlePrintBulk = () => {
+    const selected = bookings.filter((b) => selectedOrderIds.includes(b.id));
+    if (selected.length === 0) return;
+    setInvoiceOrders(selected);
+    setInvoiceModalOpen(true);
+  };
+
   const handleUpdateStatus = async (newStatus: string) => {
     if (!selectedBooking) return;
     setUpdating(true);
@@ -238,10 +282,10 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
             Store Management
           </span>
           <h1 className="font-serif text-2xl sm:text-3xl text-[#2B211C] font-normal tracking-tight mt-1">
-            Orders &amp; Payments
+            Orders &amp; Invoices
           </h1>
-          <p className="text-xs text-[#7A6A5F] mt-1">
-            Real-time tracking of Razorpay payments, customer details, custom tailoring dimensions, and delivery fulfillment.
+          <p suppressHydrationWarning className="text-xs text-[#7A6A5F] mt-1">
+            Real-time tracking of orders, payment transactions, custom measurements, and official tax invoice generation.
           </p>
         </div>
 
@@ -255,11 +299,6 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
             <span>Confirmed &amp; Paid:</span>
             <strong className="font-semibold">{confirmedCount}</strong>
-          </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50/80 border border-amber-200/80 rounded-sm text-xs text-amber-900 shadow-2xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#B06F5E]" />
-            <span>In Tailoring:</span>
-            <strong className="font-semibold">{inTailoringCount}</strong>
           </div>
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50/80 border border-blue-200/80 rounded-sm text-xs text-blue-900 shadow-2xs">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
@@ -324,7 +363,6 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
           {[
             { id: "all", label: "All Orders", count: totalCount },
             { id: "confirmed", label: "Paid & Confirmed", count: confirmedCount },
-            { id: "picked_up", label: "In Tailoring", count: inTailoringCount },
             { id: "returned", label: "Shipped", count: shippedCount },
             { id: "completed", label: "Delivered", count: deliveredCount },
             { id: "awaiting_payment", label: "Awaiting Payment", count: awaitingPaymentCount },
@@ -365,6 +403,45 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
         </div>
       </div>
 
+      {/* 02.5 Floating Bulk Action Bar (when orders selected) */}
+      {selectedOrderIds.length > 0 && (
+        <div className="bg-[#2B211C] text-white px-4 py-3 rounded-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg border border-[#3E312A] animate-in slide-in-from-top-1 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+            <span className="font-medium">
+              {selectedOrderIds.length} of {filteredBookings.length} order{selectedOrderIds.length === 1 ? "" : "s"} selected
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={handlePrintBulk}
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#B06F5E] hover:bg-[#975D4E] text-white rounded-xs font-medium transition-colors shadow-xs"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print {selectedOrderIds.length} Invoices (Batch Print)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleToggleSelectAll}
+              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-stone-200 rounded-xs transition-colors"
+            >
+              {selectedOrderIds.length === filteredBookings.length ? "Deselect All" : `Select All (${filteredBookings.length})`}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleClearSelection}
+              className="px-2.5 py-1.5 text-stone-400 hover:text-white transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 03. Orders Table View */}
       <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm shadow-xs overflow-hidden">
         {filteredBookings.length > 0 ? (
@@ -374,6 +451,16 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#FAF6F0] text-[#7A6A5F] uppercase tracking-wider font-sans border-b border-[#E8DDD1]">
                   <tr>
+                    {/* Checkbox Header */}
+                    <th className="py-3 px-3 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={filteredBookings.length > 0 && selectedOrderIds.length === filteredBookings.length}
+                        onChange={handleToggleSelectAll}
+                        className="rounded-xs border-[#E8DDD1] text-[#B06F5E] focus:ring-[#B06F5E] cursor-pointer"
+                        title="Select All"
+                      />
+                    </th>
                     <th className="py-3 px-4 font-semibold">Order Ref</th>
                     <th className="py-3 px-4 font-semibold">Client &amp; Shipping</th>
                     <th className="py-3 px-4 font-semibold">Purchased Item</th>
@@ -392,13 +479,26 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
                     const img = getProductImage(b);
                     const pay = getPaymentInfo(b);
                     const effStatus = getEffectiveStatus(b);
+                    const isSelected = selectedOrderIds.includes(b.id);
 
                     return (
                       <tr
                         key={b.id}
                         onClick={() => setSelectedBooking(b)}
-                        className="hover:bg-[#FAF6F0]/70 cursor-pointer transition-colors group"
+                        className={`hover:bg-[#FAF6F0]/70 cursor-pointer transition-colors group ${
+                          isSelected ? "bg-amber-50/40" : ""
+                        }`}
                       >
+                        {/* Checkbox */}
+                        <td className="py-3 px-3 w-10 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelectOne(b.id)}
+                            className="rounded-xs border-[#E8DDD1] text-[#B06F5E] focus:ring-[#B06F5E] cursor-pointer"
+                          />
+                        </td>
+
                         {/* Order Ref */}
                         <td className="py-3 px-4 whitespace-nowrap">
                           <span className="font-mono font-semibold text-[#B06F5E] group-hover:underline block">
@@ -551,17 +651,31 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
 
                         {/* Actions */}
                         <td className="py-3 px-4 text-right whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedBooking(b);
-                            }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-[#2B211C] bg-[#FAF6F0] hover:bg-[#E8DDD1] border border-[#E8DDD1] rounded-xs transition-colors"
-                          >
-                            <Eye className="w-3 h-3 text-[#B06F5E]" />
-                            <span>Manage Order</span>
-                          </button>
+                          <div className="inline-flex items-center gap-1.5">
+                            {/* Invoice Print Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => handlePrintSingle(b, e)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-[#2B211C] bg-[#FAF6F0] hover:bg-[#E8DDD1] border border-[#E8DDD1] rounded-xs transition-colors"
+                              title="Print Tax Invoice"
+                            >
+                              <Printer className="w-3 h-3 text-[#B06F5E]" />
+                              <span>Invoice</span>
+                            </button>
+
+                            {/* Manage Order Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedBooking(b);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-[#2B211C] bg-[#FAF6F0] hover:bg-[#E8DDD1] border border-[#E8DDD1] rounded-xs transition-colors"
+                            >
+                              <Eye className="w-3 h-3 text-[#B06F5E]" />
+                              <span>Manage</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -578,16 +692,27 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
                 const custom = getCustomization(b);
                 const img = getProductImage(b);
                 const pay = getPaymentInfo(b);
-                const effStatus = getEffectiveStatus(b);
+                const isSelected = selectedOrderIds.includes(b.id);
 
                 return (
                   <div
                     key={b.id}
                     onClick={() => setSelectedBooking(b)}
-                    className="p-4 space-y-3 hover:bg-[#FAF6F0]/60 active:bg-[#FAF6F0] transition-colors cursor-pointer"
+                    className={`p-4 space-y-3 hover:bg-[#FAF6F0]/60 active:bg-[#FAF6F0] transition-colors cursor-pointer ${
+                      isSelected ? "bg-amber-50/40" : ""
+                    }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handleToggleSelectOne(b.id);
+                          }}
+                          className="rounded-xs border-[#E8DDD1] text-[#B06F5E] focus:ring-[#B06F5E]"
+                        />
                         <span className="font-mono font-semibold text-[#B06F5E] text-xs">
                           {b.reference}
                         </span>
@@ -636,12 +761,33 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-[#E8DDD1]/60 text-xs">
-                      <span className="text-[11px] text-[#7A6A5F]">
-                        {formatDate(b.created_at)}
-                      </span>
-                      <span className="font-sans font-semibold text-[#2B211C]">
-                        {formatINR(b.total_paise)}
-                      </span>
+                      <div>
+                        <span className="text-[11px] text-[#7A6A5F] block">
+                          {formatDate(b.created_at)}
+                        </span>
+                        <span className="font-sans font-semibold text-[#2B211C]">
+                          {formatINR(b.total_paise)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => handlePrintSingle(b, e)}
+                          className="px-2.5 py-1 text-xs font-medium text-[#2B211C] bg-[#FAF6F0] hover:bg-[#E8DDD1] border border-[#E8DDD1] rounded-xs inline-flex items-center gap-1"
+                        >
+                          <Printer className="w-3 h-3 text-[#B06F5E]" />
+                          <span>Invoice</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBooking(b)}
+                          className="px-2.5 py-1 text-xs font-medium text-[#2B211C] bg-[#FAF6F0] hover:bg-[#E8DDD1] border border-[#E8DDD1] rounded-xs inline-flex items-center gap-1"
+                        >
+                          <Eye className="w-3 h-3 text-[#B06F5E]" />
+                          <span>Manage</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -706,14 +852,27 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setSelectedBooking(null)}
-                  className="p-1.5 text-[#7A6A5F] hover:text-[#2B211C] hover:bg-[#FAF6F0] rounded-sm transition-colors"
-                  aria-label="Close modal"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* Quick Print from Modal Header */}
+                  <button
+                    type="button"
+                    onClick={() => handlePrintSingle(selectedBooking)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF6F0] hover:bg-[#E8DDD1] text-[#2B211C] border border-[#E8DDD1] rounded-xs text-xs font-medium transition-colors"
+                    title="Print Tax Invoice"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-[#B06F5E]" />
+                    <span>Print Invoice</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedBooking(null)}
+                    className="p-1.5 text-[#7A6A5F] hover:text-[#2B211C] hover:bg-[#FAF6F0] rounded-sm transition-colors"
+                    aria-label="Close modal"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Grid 2 Columns: Item & Customization | Client Shipping & Razorpay */}
@@ -970,7 +1129,7 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
                 </div>
               </div>
 
-              {/* Order Lifecycle Status Actions */}
+              {/* Order Lifecycle Status Actions & Print Invoice */}
               <div className="space-y-3 pt-4 border-t border-[#E8DDD1]">
                 <div className="flex items-center justify-between">
                   <h4 className="font-serif text-base text-[#2B211C]">
@@ -983,7 +1142,7 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
 
                 <div>
                   <label className="block text-[11px] uppercase tracking-wider text-[#7A6A5F] mb-1">
-                    Status Transition Note (e.g. Courier Tracking Number or Tailoring Update)
+                    Status Transition Note (e.g. Courier Tracking Number or Dispatch Note)
                   </label>
                   <input
                     type="text"
@@ -995,6 +1154,16 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 pt-2">
+                  {/* Print Invoice Button */}
+                  <button
+                    type="button"
+                    onClick={() => handlePrintSingle(selectedBooking)}
+                    className="px-3.5 py-2 bg-white hover:bg-[#FAF6F0] text-[#2B211C] border border-[#E8DDD1] rounded-xs text-xs font-medium transition-colors flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-[#B06F5E]" />
+                    <span>Print Tax Invoice</span>
+                  </button>
+
                   <button
                     type="button"
                     disabled={updating || effStatus === "confirmed"}
@@ -1002,16 +1171,6 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
                     className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xs text-xs font-medium transition-colors disabled:opacity-40"
                   >
                     Confirm Order &amp; Payment
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={updating || selectedBooking.status === "picked_up"}
-                    onClick={() => handleUpdateStatus("picked_up")}
-                    className="px-3.5 py-2 bg-[#B06F5E] hover:bg-[#975D4E] text-white rounded-xs text-xs font-medium transition-colors disabled:opacity-40 flex items-center gap-1.5"
-                  >
-                    <Scissors className="w-3.5 h-3.5" />
-                    <span>In Production / Tailoring</span>
                   </button>
 
                   <button
@@ -1048,7 +1207,15 @@ export function BookingsManager({ initialBookings = [] }: BookingsManagerProps) 
         );
       })()}
 
-      {/* Cancel Order Confirmation Modal */}
+      {/* 05. Tax Invoice Print & PDF Modal */}
+      <OrderInvoiceModal
+        isOpen={invoiceModalOpen}
+        onClose={() => setInvoiceModalOpen(false)}
+        orders={invoiceOrders}
+        siteSettings={siteSettings}
+      />
+
+      {/* 06. Cancel Order Confirmation Modal */}
       <ConfirmDialogModal
         isOpen={cancelModalOpen}
         onClose={() => setCancelModalOpen(false)}

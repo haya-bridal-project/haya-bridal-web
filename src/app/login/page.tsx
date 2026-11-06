@@ -1,25 +1,36 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { HayaLogo } from "@/components/brand/HayaLogo";
-import { Lock, Mail, ArrowRight, AlertCircle } from "lucide-react";
+import { Lock, Mail, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 
-function LoginForm() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/account";
+  const initialMode = searchParams.get("mode") === "forgot" ? "forgot" : "login";
 
+  const [mode, setMode] = useState<"login" | "forgot">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("mode") === "forgot") {
+      setMode("forgot");
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    setSuccessMsg(null);
     setLoading(true);
 
     try {
@@ -59,11 +70,36 @@ function LoginForm() {
     }
   };
 
+  if (mode === "forgot") {
+    return (
+      <ForgotPasswordForm
+        initialEmail={email}
+        onBackToLogin={() => {
+          setMode("login");
+          setErrorMsg(null);
+        }}
+        onSuccess={(resetEmail) => {
+          setEmail(resetEmail);
+          setMode("login");
+          setErrorMsg(null);
+          setSuccessMsg("Password reset successfully via Brevo OTP! Please sign in with your new password.");
+        }}
+      />
+    );
+  }
+
   return (
     <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm py-8 px-6 sm:px-10 shadow-xs">
+      {successMsg && (
+        <div className="mb-6 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-sm flex items-start gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+          <span>{successMsg}</span>
+        </div>
+      )}
+
       {errorMsg && (
-        <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-sm flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
+        <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-sm flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
           <span>{errorMsg}</span>
         </div>
       )}
@@ -87,9 +123,22 @@ function LoginForm() {
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] mb-1 font-sans">
-            Password
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-xs uppercase tracking-wider text-[#7A6A5F] font-sans">
+              Password
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setMode("forgot");
+                setErrorMsg(null);
+                setSuccessMsg(null);
+              }}
+              className="text-[11px] text-[#B06F5E] hover:underline font-sans"
+            >
+              Forgot Password?
+            </button>
+          </div>
           <div className="relative">
             <input
               type="password"
@@ -146,7 +195,7 @@ export default function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
         <Suspense fallback={<div className="p-8 text-center text-xs text-[#7A6A5F]">Loading sign-in...</div>}>
-          <LoginForm />
+          <LoginContent />
         </Suspense>
       </div>
     </div>
