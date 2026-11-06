@@ -233,3 +233,56 @@ export async function emailRefundUpdate(b: Booking, refund: { id: string; status
     }),
   });
 }
+
+
+export async function emailPasswordResetOtp(to: string, otp: string, userName?: string | null) {
+  const c = await ctx();
+  const nameGreeting = userName ? `Dear ${userName}, ` : "Hello, ";
+  return await sendEmail({
+    eventType: "password_reset_otp",
+    to,
+    toName: userName ?? undefined,
+    subject: `Your Haya Account Password Reset Code: ${otp}`,
+    html: `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Password Reset OTP</title></head>
+<body style="margin:0;padding:0;background:#FAF6F0;font-family:Helvetica,Arial,sans-serif;color:#2B211C">
+<span style="display:none;max-height:0;overflow:hidden">Your password reset verification code is ${otp}</span>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAF6F0;padding:32px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:540px;background:#FFFFFF;border:1px solid #E8DDD1;border-radius:4px;overflow:hidden">
+<tr><td style="padding:28px 32px 8px;text-align:center;font-family:Georgia,'Times New Roman',serif;font-size:28px;letter-spacing:1px;color:#2B211C">Haya</td></tr>
+<tr><td style="padding:0 32px 20px;text-align:center;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#7A6A5F">Bridal Couture &amp; Fine Ornaments</td></tr>
+<tr><td style="border-top:1px solid #E8DDD1;padding:28px 32px 10px;font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#2B211C;text-align:center">Password Reset Verification</td></tr>
+<tr><td style="padding:0 32px 16px;font-size:14px;line-height:22px;color:#5A4C42;text-align:center">
+${nameGreeting}we received a request to reset your password. Use the verification code below to set a new password:
+</td></tr>
+<tr><td align="center" style="padding:10px 32px 20px">
+  <div style="display:inline-block;background:#FAF6F0;border:1.5px dashed #B06F5E;border-radius:6px;padding:16px 36px;letter-spacing:8px;font-family:'Courier New',Courier,monospace;font-size:32px;font-weight:bold;color:#B06F5E">
+    ${otp}
+  </div>
+</td></tr>
+<tr><td style="padding:0 32px 24px;font-size:12px;line-height:19px;color:#7A6A5F;text-align:center">
+This one-time passcode will expire in <strong>10 minutes</strong>. If you did not request this password reset, you can safely ignore this email — your account remains secure.
+</td></tr>
+<tr><td style="border-top:1px solid #E8DDD1;padding:16px 32px;font-size:11px;color:#7A6A5F;text-align:center">
+Haya Bridal Couture &amp; Fine Ornaments &middot; Secure Client Portal
+</td></tr>
+</table></td></tr></table></body></html>`,
+  });
+}
+
+export async function emailPasswordChanged(to: string, userName?: string | null) {
+  const c = await ctx();
+  return await sendEmail({
+    eventType: "password_changed_confirmation",
+    to,
+    toName: userName ?? undefined,
+    subject: "Your Haya Account Password Was Reset",
+    html: layout({
+      preheader: "Your account password was successfully updated.",
+      heading: "Password Updated",
+      intro: `Your password for ${to} has been successfully updated. You can now sign in with your new password.`,
+      cta: { label: "Sign In to Your Account", href: `${c.site}/login` },
+      outro: "If you did not perform this change, please contact us immediately to protect your account.",
+      contact: c.contact,
+    }),
+  });
+}
