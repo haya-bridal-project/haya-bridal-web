@@ -241,13 +241,85 @@ export async function emailPaymentFailed(b: Booking, paymentId: string) {
   });
 }
 
+export async function emailOrderDelivered(b: Booking, note?: string | null) {
+  if (!b.customer_email) {
+    console.warn("[email] Cannot send delivery email: booking has no customer_email", b.id);
+    return;
+  }
+  const c = await ctx();
+  const deliveryRows: [string, string | null | undefined][] = [
+    ["Order Reference", b.reference],
+    ["Delivered Item", b.product_name],
+    ["Size / Fit", b.size || null],
+    ["Colour", b.color || null],
+    ["Delivery Address", b.customer_address || null],
+    ...(note ? [["Delivery Note", note] as [string, string]] : []),
+  ];
+
+  await sendEmail({
+    dedupeKey: `booking:${b.id}:delivered`,
+    eventType: "order_delivered",
+    to: b.customer_email,
+    toName: b.customer_name,
+    subject: `Your Haya order ${b.reference} has been delivered`,
+    relatedType: "booking",
+    relatedId: b.id,
+    html: layout({
+      preheader: `Your order ${b.reference} has been delivered.`,
+      heading: "Your Order Has Been Delivered",
+      intro: `Dear ${b.customer_name}, we are delighted to inform you that your order ${b.reference} (${b.product_name}) has been successfully delivered.`,
+      rows: deliveryRows,
+      cta: { label: "View Order & Invoice", href: orderConfirmationHref(c.site, b.reference) },
+      outro: "We hope your bridal ensemble or fine ornament brings timeless beauty and joy to your special occasion. If you need any styling advice, care guidance, or further assistance, our atelier team is always at your service.",
+      contact: c.contact,
+    }),
+  });
+}
+
+export async function emailOrderShipped(b: Booking, note?: string | null) {
+  if (!b.customer_email) {
+    console.warn("[email] Cannot send dispatch email: booking has no customer_email", b.id);
+    return;
+  }
+  const c = await ctx();
+  const dispatchRows: [string, string | null | undefined][] = [
+    ["Order Reference", b.reference],
+    ["Item", b.product_name],
+    ["Size / Fit", b.size || null],
+    ["Colour", b.color || null],
+    ["Delivery Address", b.customer_address || null],
+    ...(note ? [["Courier / Tracking Info", note] as [string, string]] : []),
+  ];
+
+  await sendEmail({
+    dedupeKey: `booking:${b.id}:shipped`,
+    eventType: "order_shipped",
+    to: b.customer_email,
+    toName: b.customer_name,
+    subject: `Your Haya order ${b.reference} has been dispatched`,
+    relatedType: "booking",
+    relatedId: b.id,
+    html: layout({
+      preheader: `Your order ${b.reference} is on its way.`,
+      heading: "Your Order Has Been Dispatched",
+      intro: `Dear ${b.customer_name}, wonderful news! Your order ${b.reference} (${b.product_name}) has been carefully packaged and dispatched for delivery.`,
+      rows: dispatchRows,
+      cta: { label: "Track Your Order", href: orderConfirmationHref(c.site, b.reference) },
+      outro: "Your package is currently in transit to your specified delivery address. Please keep your phone available for courier coordination.",
+      contact: c.contact,
+    }),
+  });
+}
+
 export async function emailBookingStatusChanged(b: Booking, note?: string | null) {
   const c = await ctx();
+  if (b.status === "confirmed") return emailBookingConfirmed(b, false);
+  if (b.status === "completed") return emailOrderDelivered(b, note);
+  if (b.status === "returned") return emailOrderShipped(b, note);
   const map: Partial<Record<Booking["status"], { subject: string; heading: string; intro: string }>> = {
     cancelled: { subject: `Order ${b.reference} cancelled`, heading: "Order cancelled", intro: `Dear ${b.customer_name}, your order has been cancelled.` },
     rejected: { subject: `Order request ${b.reference} could not be accepted`, heading: "Order request update", intro: `Dear ${b.customer_name}, unfortunately we are unable to accept this order request.` },
   };
-  if (b.status === "confirmed") return emailBookingConfirmed(b, false);
   const m = map[b.status];
   if (!m) return;
   await sendEmail({
