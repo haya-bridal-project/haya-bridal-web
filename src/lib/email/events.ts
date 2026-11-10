@@ -37,13 +37,21 @@ async function ctx() {
 }
 
 function orderConfirmationHref(site: string, reference: string) {
-  const token = signOrderToken(reference);
-  return `${site}/booking/confirmation/${encodeURIComponent(reference)}?t=${encodeURIComponent(token)}`;
+  try {
+    const token = signOrderToken(reference);
+    return `${site}/booking/confirmation/${encodeURIComponent(reference)}?t=${encodeURIComponent(token)}`;
+  } catch {
+    return `${site}/booking/confirmation/${encodeURIComponent(reference)}`;
+  }
 }
 
 function orderCheckoutHref(site: string, reference: string) {
-  const token = signOrderToken(reference);
-  return `${site}/checkout/${encodeURIComponent(reference)}?t=${encodeURIComponent(token)}`;
+  try {
+    const token = signOrderToken(reference);
+    return `${site}/checkout/${encodeURIComponent(reference)}?t=${encodeURIComponent(token)}`;
+  } catch {
+    return `${site}/checkout/${encodeURIComponent(reference)}`;
+  }
 }
 
 function toData(b: Booking): BookingEmailData {
@@ -64,23 +72,28 @@ function toData(b: Booking): BookingEmailData {
 
 export async function emailEnquiryReceived(e: { id: string; name: string; email: string; phone?: string | null; message: string; productName?: string | null; kind: string }) {
   const c = await ctx();
+  const hasRealCustomerEmail = Boolean(e.email) && !e.email.endsWith("@whatsapp.guest");
   await Promise.allSettled([
-    sendEmail({
-      dedupeKey: `enquiry:${e.id}:customer`,
-      eventType: "enquiry_received",
-      to: e.email,
-      toName: e.name,
-      subject: "We have received your enquiry",
-      relatedType: "enquiry",
-      relatedId: e.id,
-      html: layout({
-        preheader: "Thank you for contacting Haya.",
-        heading: `Thank you, ${e.name}`,
-        intro: "We have received your enquiry and a member of our styling team will get back to you shortly.",
-        rows: [["Outfit", e.productName], ["Your message", e.message]],
-        contact: c.contact,
-      }),
-    }),
+    ...(hasRealCustomerEmail
+      ? [
+          sendEmail({
+            dedupeKey: `enquiry:${e.id}:customer`,
+            eventType: "enquiry_received",
+            to: e.email,
+            toName: e.name,
+            subject: "We have received your enquiry",
+            relatedType: "enquiry",
+            relatedId: e.id,
+            html: layout({
+              preheader: "Thank you for contacting Haya.",
+              heading: `Thank you, ${e.name}`,
+              intro: "We have received your enquiry and a member of our styling team will get back to you shortly.",
+              rows: [["Outfit", e.productName], ["Your message", e.message]],
+              contact: c.contact,
+            }),
+          }),
+        ]
+      : []),
     ...c.adminEmails.map((adminTo) =>
       sendEmail({
         dedupeKey: `enquiry:${e.id}:admin:${adminTo}`,

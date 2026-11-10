@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { isConfigured } from "@/lib/env";
 import { emailConsultationReceived } from "@/lib/email/events";
 
 export async function POST(request: NextRequest) {
@@ -13,33 +14,34 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
     const { data: user } = await supabase.auth.getUser();
+    const db = isConfigured.serviceRole() ? createServiceClient() : supabase;
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("consultations")
       .insert({
         customer_id: user?.user?.id || null,
-        name,
-        email: email.toLowerCase().trim(),
-        phone,
+        name: String(name).trim(),
+        email: String(email).toLowerCase().trim(),
+        phone: String(phone).trim(),
         preferred_date,
         preferred_time: preferred_time || null,
         mode: mode || "in_store",
-        message: message || null,
+        message: message ? String(message).trim() : null,
         status: "requested",
       })
       .select("id")
       .single();
 
-    if (error) {
+    if (error || !data?.id) {
       console.error("[consultations] insert error", error);
       return NextResponse.json({ error: "Failed to submit request" }, { status: 500 });
     }
 
     await emailConsultationReceived({
       id: data.id,
-      name,
-      email,
-      phone,
+      name: String(name).trim(),
+      email: String(email).toLowerCase().trim(),
+      phone: String(phone).trim(),
       preferred_date,
       preferred_time,
       mode: mode || "in_store",
@@ -47,6 +49,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, id: data.id });
   } catch (err: unknown) {
+    console.error("[consultations] unexpected error", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
