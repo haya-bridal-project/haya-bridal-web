@@ -21,7 +21,7 @@ export default function PrivacyPolicyPage() {
           <section className="space-y-2">
             <h2 className="font-serif text-lg text-[#2B211C]">2. Payment Information Security</h2>
             <p>
-              We do not store your credit card numbers, CVVs, or banking credentials on our servers. All financial transactions are securely processed through Razorpay in full PCI-DSS compliance with 256-bit encryption.
+              We do not store your credit card numbers, CVVs, or banking credentials on our servers. All financial transactions are securely processed through Cashfree in full PCI-DSS compliance with 256-bit encryption.
             </p>
           </section>
           <section className="space-y-2">

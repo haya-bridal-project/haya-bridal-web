@@ -154,7 +154,7 @@ export function BookingCheckoutForm({
         throw new Error(data.error || "Failed to initialize order.");
       }
 
-      // Direct to Razorpay payment checkout
+      // Direct to Cashfree payment checkout
       router.push(`/checkout/${data.reference}${data.access_token ? `?t=${data.access_token}` : ""}`);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Order could not be processed.");

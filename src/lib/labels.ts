@@ -1,7 +1,7 @@
 import type { BookingStatus, PaymentStatus } from "@/lib/types";
 
 export const BOOKING_STATUS_LABEL: Record<BookingStatus, string> = {
-  pending_payment: "Awaiting Razorpay Payment",
+  pending_payment: "Awaiting Cashfree Payment",
   requested: "Order Received",
   confirmed: "Confirmed / Payment Received",
   rejected: "Declined",
@@ -17,7 +17,7 @@ export const ORDER_STATUS_LABEL = BOOKING_STATUS_LABEL;
 export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   unpaid: "Unpaid",
   pending: "Pending",
-  paid: "Paid via Razorpay",
+  paid: "Paid via Cashfree",
   failed: "Payment Failed",
   refunded: "Refunded",
   partially_refunded: "Partially refunded",

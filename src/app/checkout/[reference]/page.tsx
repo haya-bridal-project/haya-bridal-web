@@ -3,11 +3,11 @@ import Link from "next/link";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getSiteSettings } from "@/lib/data/public";
-import { isConfigured } from "@/lib/env";
+import { env, isConfigured } from "@/lib/env";
 import { canAccessOrder } from "@/lib/guest-token";
 import { Header } from "@/components/storefront/Header";
 import { Footer } from "@/components/storefront/Footer";
-import { RazorpayCheckoutWidget } from "@/components/storefront/RazorpayCheckoutWidget";
+import { CashfreeCheckoutWidget } from "@/components/storefront/CashfreeCheckoutWidget";
 import type { Booking } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +21,12 @@ export default async function CheckoutPage(props: CheckoutPageProps) {
   const { reference } = await props.params;
   const searchParams = await props.searchParams;
   const token = typeof searchParams.t === "string" ? searchParams.t : null;
+  const initialOrderId =
+    typeof searchParams.cf_order_id === "string"
+      ? searchParams.cf_order_id
+      : typeof searchParams.order_id === "string"
+        ? searchParams.order_id
+        : null;
 
   const user = await getCurrentUser();
 
@@ -44,7 +50,8 @@ export default async function CheckoutPage(props: CheckoutPageProps) {
   }
 
   const settings = await getSiteSettings();
-  const razorpayReady = isConfigured.razorpay();
+  const cashfreeReady = isConfigured.cashfree();
+  const cashfreeMode = cashfreeReady ? env.cashfree().mode : "sandbox";
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF6F0]">
@@ -69,11 +76,12 @@ export default async function CheckoutPage(props: CheckoutPageProps) {
           </h1>
         </div>
 
-        <RazorpayCheckoutWidget
+        <CashfreeCheckoutWidget
           booking={booking}
-          razorpayReady={razorpayReady}
-          razorpayKeyId={process.env.RAZORPAY_KEY_ID || ""}
+          cashfreeReady={cashfreeReady}
+          cashfreeMode={cashfreeMode}
           accessToken={token}
+          initialOrderId={initialOrderId}
         />
       </main>
 

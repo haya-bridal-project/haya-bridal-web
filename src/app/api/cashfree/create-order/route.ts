@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { createServiceClient } from "@/lib/supabase/server";
-import { createOrder } from "@/lib/razorpay";
-import { isConfigured } from "@/lib/env";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createCashfreeOrder, sanitizeCashfreeId } from "@/lib/cashfree";
+import { env, isConfigured } from "@/lib/env";
 import { canAccessOrder } from "@/lib/guest-token";
 import type { Booking } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
-  if (!isConfigured.razorpay()) {
+  if (!isConfigured.cashfree()) {
     return NextResponse.json(
-      { error: "Razorpay payment gateway is not configured." },
+      { error: "Cashfree payment gateway is not configured." },
       { status: 503 }
     );
   }
@@ -27,7 +26,6 @@ export async function POST(request: NextRequest) {
 
     const serviceClient = createServiceClient();
 
-    // Retrieve booking record
     const { data: booking, error: bError } = await serviceClient
       .from("bookings")
       .select("*")
@@ -40,7 +38,6 @@ export async function POST(request: NextRequest) {
 
     const b = booking as Booking;
 
-    // Owner (logged in) or holder of the guest token only
     if (!canAccessOrder(b, userId, access_token)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -49,39 +46,56 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Booking is already paid" }, { status: 400 });
     }
 
-    // Create order on Razorpay with authoritative total_paise
-    const order = await createOrder({
+    const gatewayOrderId = sanitizeCashfreeId(
+      `${b.reference}_${Date.now().toString(36)}`
+    );
+
+    const requestOrigin = request.nextUrl.origin;
+    const configuredSiteUrl = env.siteUrl();
+    const baseReturnOrigin = requestOrigin.startsWith("http") ? requestOrigin : configuredSiteUrl;
+    const tokenQuery = access_token ? `&t=${encodeURIComponent(access_token)}` : "";
+    const returnUrl = `${baseReturnOrigin}/checkout/${encodeURIComponent(b.reference)}?cf_order_id=${encodeURIComponent(gatewayOrderId)}${tokenQuery}`;
+    const notifyUrl = configuredSiteUrl.startsWith("https://")
+      ? `${configuredSiteUrl}/api/webhooks/cashfree`
+      : undefined;
+
+    const order = await createCashfreeOrder({
+      orderId: gatewayOrderId,
       amountPaise: b.total_paise,
-      receipt: b.reference,
-      notes: {
-        booking_id: b.id,
-        booking_reference: b.reference,
-        customer_email: b.customer_email,
-      },
+      customerId: b.customer_id || b.reference,
+      customerName: b.customer_name,
+      customerEmail: b.customer_email,
+      customerPhone: b.customer_phone,
+      returnUrl,
+      notifyUrl,
+      bookingReference: b.reference,
     });
 
-    // Record created payment in Supabase using service client
+    // Store Cashfree order_id in payments table (using existing column slot)
     await serviceClient.from("payments").upsert(
       {
         booking_id: b.id,
-        razorpay_order_id: order.id,
+        razorpay_order_id: order.order_id,
         amount_paise: b.total_paise,
-        currency: "INR",
+        currency: order.order_currency || "INR",
         status: "created",
       },
       { onConflict: "razorpay_order_id" }
     );
 
     return NextResponse.json({
-      order_id: order.id,
-      amount: order.amount,
-      currency: order.currency,
+      order_id: order.order_id,
+      cf_order_id: String(order.cf_order_id),
+      payment_session_id: order.payment_session_id,
+      amount: order.order_amount,
+      currency: order.order_currency,
     });
   } catch (err: unknown) {
-    console.error("[razorpay/create-order] error", err);
+    console.error("[cashfree/create-order] error", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Order creation failed" },
       { status: 500 }
     );
   }
 }
+

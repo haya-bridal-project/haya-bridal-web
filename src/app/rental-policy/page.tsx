@@ -26,7 +26,7 @@ export default function OrderPolicyPage() {
           <section className="space-y-2">
             <h2 className="font-serif text-lg text-[#2B211C]">3. Secure Online Payments (No COD)</h2>
             <p>
-              Due to the personalized craftsmanship involved in bridal couture and fine ornaments, all orders are prepaid securely using Razorpay (UPI, Credit/Debit Cards, Net Banking) or coordinated via boutique WhatsApp concierge. Cash on Delivery (COD) is not available.
+              Due to the personalized craftsmanship involved in bridal couture and fine ornaments, all orders are prepaid securely using Cashfree (UPI, Credit/Debit Cards, Net Banking) or coordinated via boutique WhatsApp concierge. Cash on Delivery (COD) is not available.
             </p>
           </section>
 

@@ -228,7 +228,7 @@ export async function emailRefundUpdate(b: Booking, refund: { id: string; status
       heading: "Refund update",
       intro: `Dear ${b.customer_name}, here is the latest status of your refund.`,
       rows: [["Order reference", b.reference], ["Refund amount", formatINR(refund.amount_paise)], ["Refund status", refund.status], ["Refund reference", refund.id]],
-      outro: "Refunds are processed by Razorpay to your original payment method. Bank timelines may vary.",
+      outro: "Refunds are processed by Cashfree to your original payment method. Bank timelines may vary.",
       contact: c.contact,
     }),
   });

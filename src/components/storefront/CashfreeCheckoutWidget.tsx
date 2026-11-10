@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import {
@@ -8,161 +8,170 @@ import {
   ShieldCheck,
   Lock,
   AlertCircle,
-  Truck,
-  ArrowRight,
-  HelpCircle,
 } from "lucide-react";
 import { formatINR } from "@/lib/money";
+import type { CashfreeMode } from "@/lib/cashfree";
 import type { Booking } from "@/lib/types";
 
-interface RazorpayCheckoutWidgetProps {
+interface CashfreeCheckoutWidgetProps {
   booking: Booking;
-  razorpayReady: boolean;
-  razorpayKeyId: string;
+  cashfreeReady: boolean;
+  cashfreeMode: CashfreeMode;
   accessToken?: string | null;
+  initialOrderId?: string | null;
 }
 
-interface RazorpayInstance {
-  open: () => void;
-  on: (event: string, cb: (res: RazorpayFailedResponse) => void) => void;
-}
+type CashfreeCheckoutResult = {
+  error?: { message?: string; code?: string };
+  redirect?: boolean;
+  paymentDetails?: { paymentMessage?: string };
+};
 
-interface RazorpayFailedResponse {
-  error?: {
-    code?: string;
-    description?: string;
-    source?: string;
-    step?: string;
-    reason?: string;
-    metadata?: { order_id?: string; payment_id?: string };
-  };
+interface CashfreeSdkInstance {
+  checkout: (options: {
+    paymentSessionId: string;
+    redirectTarget?: "_modal" | "_self" | "_blank" | "_top";
+  }) => Promise<CashfreeCheckoutResult>;
 }
 
 declare global {
   interface Window {
-    Razorpay?: new (options: Record<string, unknown>) => RazorpayInstance;
+    Cashfree?: (config: { mode: CashfreeMode }) => CashfreeSdkInstance;
   }
 }
 
-export function RazorpayCheckoutWidget({
+export function CashfreeCheckoutWidget({
   booking,
-  razorpayReady,
-  razorpayKeyId,
+  cashfreeReady,
+  cashfreeMode,
   accessToken,
-}: RazorpayCheckoutWidgetProps) {
+  initialOrderId,
+}: CashfreeCheckoutWidgetProps) {
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
+  const [verifyingReturn, setVerifyingReturn] = useState(Boolean(initialOrderId));
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const handledReturnRef = useRef(false);
+
+  const verifyOrder = useCallback(
+    async (orderId: string) => {
+      const verifyRes = await fetch("/api/cashfree/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          booking_id: booking.id,
+          order_id: orderId,
+          access_token: accessToken ?? undefined,
+        }),
+      });
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok) {
+        throw new Error(verifyData.error || "Payment verification failed.");
+      }
+      router.push(
+        `/booking/confirmation/${booking.reference}${accessToken ? `?t=${encodeURIComponent(accessToken)}` : ""}`
+      );
+    },
+    [accessToken, booking.id, booking.reference, router]
+  );
+
+  // If Cashfree redirected back to return_url with ?cf_order_id=..., verify immediately
+  useEffect(() => {
+    if (!initialOrderId || !cashfreeReady || handledReturnRef.current) return;
+    handledReturnRef.current = true;
+
+    let cancelled = false;
+    (async () => {
+      setVerifyingReturn(true);
+      setErrorMsg(null);
+      try {
+        await verifyOrder(initialOrderId);
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setErrorMsg(
+            err instanceof Error
+              ? err.message
+              : "Payment could not be verified. Please retry below."
+          );
+          setVerifyingReturn(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cashfreeReady, initialOrderId, verifyOrder]);
 
   const handlePayNow = async () => {
-    if (!razorpayReady) return;
+    if (!cashfreeReady || loading || verifyingReturn) return;
     setErrorMsg(null);
     setLoading(true);
 
     try {
-      // 1. Create order on server
-      const res = await fetch("/api/razorpay/create-order", {
+      if (!window.Cashfree) {
+        throw new Error("Cashfree payment SDK is still loading. Please retry in a moment.");
+      }
+
+      // 1. Create order & payment_session_id on server
+      const res = await fetch("/api/cashfree/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ booking_id: booking.id, access_token: accessToken ?? undefined }),
+        body: JSON.stringify({
+          booking_id: booking.id,
+          access_token: accessToken ?? undefined,
+        }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to initialize payment gateway.");
+      if (!res.ok || !data.payment_session_id) {
+        throw new Error(data.error || "Failed to initialize Cashfree payment gateway.");
       }
 
-      // 2. Open Razorpay Modal
-      const options = {
-        key: razorpayKeyId,
-        amount: data.amount,
-        currency: "INR",
-        name: "Haya Bridal",
-        description: `Order: ${booking.product_name} (${booking.reference})`,
-        order_id: data.order_id,
-        prefill: {
-          name: booking.customer_name,
-          email: booking.customer_email,
-          contact: booking.customer_phone,
-        },
-        theme: {
-          color: "#B06F5E",
-        },
-        handler: async (response: {
-          razorpay_order_id: string;
-          razorpay_payment_id: string;
-          razorpay_signature: string;
-        }) => {
-          // 3. Verify signature strictly on server
-          try {
-            const verifyRes = await fetch("/api/razorpay/verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                booking_id: booking.id,
-                access_token: accessToken ?? undefined,
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              }),
-            });
-            const verifyData = await verifyRes.json();
-            if (!verifyRes.ok) {
-              throw new Error(verifyData.error || "Payment verification failed.");
-            }
-            router.push(`/booking/confirmation/${booking.reference}${accessToken ? `?t=${accessToken}` : ""}`);
-          } catch (e: unknown) {
-            setErrorMsg(e instanceof Error ? e.message : "Verification error.");
-            setLoading(false);
-          }
-        },
-        modal: {
-          ondismiss: () => {
-            setLoading(false);
-          },
-        },
-      };
+      // 2. Launch Cashfree Checkout JS v3 Modal
+      const cashfree = window.Cashfree({ mode: cashfreeMode });
+      const result = await cashfree.checkout({
+        paymentSessionId: data.payment_session_id,
+        redirectTarget: "_modal",
+      });
 
-      if (!window.Razorpay) {
-        throw new Error("Payment modal is still loading. Please try again in a second.");
+      if (result?.redirect) {
+        return;
       }
-      const rzp = new window.Razorpay(options);
-      rzp.on("payment.failed", async (response: RazorpayFailedResponse) => {
-        const err = response?.error || {};
-        setErrorMsg(err.description || "Payment failed or declined at gateway.");
-        setLoading(false);
 
-        // Report failure to server so admin has immediate visibility
+      if (result?.error) {
+        const message = result.error.message || "Payment was cancelled or declined.";
         try {
-          await fetch("/api/razorpay/failed", {
+          await fetch("/api/cashfree/failed", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               booking_id: booking.id,
               access_token: accessToken ?? undefined,
-              razorpay_order_id: err.metadata?.order_id || data.order_id,
-              razorpay_payment_id: err.metadata?.payment_id || null,
-              error_code: err.code || "PAYMENT_FAILED",
-              error_description: err.description || err.reason || "Payment declined or failed at gateway",
-              error_source: err.source || "customer",
-              error_step: err.step || "payment_authorization",
-              error_reason: err.reason || "payment_failed",
+              order_id: data.order_id,
+              error_code: result.error.code || "CASHFREE_CHECKOUT_ERROR",
+              error_description: message,
             }),
           });
-        } catch (reportErr) {
-          console.error("[checkout] failed to report payment failure", reportErr);
+        } catch {
+          // Non-fatal failure telemetry
         }
-      });
-      rzp.open();
+        setErrorMsg(message);
+        setLoading(false);
+        return;
+      }
+
+      // 3. Verify authoritative order status on backend
+      await verifyOrder(data.order_id);
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : "Payment gateway error.");
+      setErrorMsg(err instanceof Error ? err.message : "Could not launch payment checkout.");
       setLoading(false);
     }
   };
 
   return (
     <>
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+      <Script src="https://sdk.cashfree.com/js/v3/cashfree.js" strategy="afterInteractive" />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Payment Action Panel */}
@@ -172,13 +181,13 @@ export function RazorpayCheckoutWidget({
               Online Payment
             </h2>
 
-            {razorpayReady ? (
+            {cashfreeReady ? (
               <div className="mt-6 space-y-6">
                 <div className="p-4 bg-[#FAF6F0] rounded-xs border border-[#E8DDD1] flex items-center gap-3">
                   <CreditCard className="w-5 h-5 text-[#B06F5E] shrink-0" />
                   <div className="text-xs">
                     <span className="font-medium text-[#2B211C] block">
-                      Secure Verified Payment Gateway
+                      Secure Cashfree Payment Gateway
                     </span>
                     <span className="text-[#7A6A5F]">
                       Supports UPI (Google Pay, PhonePe, Paytm), Credit &amp; Debit Cards, NetBanking.
@@ -200,12 +209,16 @@ export function RazorpayCheckoutWidget({
                 <button
                   type="button"
                   onClick={handlePayNow}
-                  disabled={loading}
+                  disabled={loading || verifyingReturn}
                   className="w-full py-4 px-6 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-xs sm:text-sm font-medium tracking-wide uppercase rounded-sm shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Lock className="w-4 h-4" />
                   <span>
-                    {loading ? "Processing..." : `Pay ${formatINR(booking.total_paise)}`}
+                    {verifyingReturn
+                      ? "Verifying Payment..."
+                      : loading
+                        ? "Processing..."
+                        : `Pay ${formatINR(booking.total_paise)}`}
                   </span>
                 </button>
 
@@ -215,15 +228,15 @@ export function RazorpayCheckoutWidget({
                 </div>
               </div>
             ) : (
-              /* Informative state when Razorpay keys are not yet configured in .env.local */
+              /* Informative state when Cashfree keys are not yet configured in .env.local */
               <div className="mt-6 space-y-5">
                 <div className="p-4 bg-amber-50/80 border border-amber-200/80 rounded-sm text-xs text-amber-900 space-y-2">
                   <div className="flex items-center gap-2 font-medium">
                     <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
-                    <span>Razorpay Credentials Notice</span>
+                    <span>Cashfree Credentials Notice</span>
                   </div>
                   <p className="font-light leading-relaxed">
-                    Razorpay credentials (<code className="bg-amber-100 px-1 py-0.5 rounded-xs">RAZORPAY_KEY_ID</code> &amp; <code className="bg-amber-100 px-1 py-0.5 rounded-xs">RAZORPAY_KEY_SECRET</code>) must be configured in your environment to accept live/test payments.
+                    Cashfree credentials (<code className="bg-amber-100 px-1 py-0.5 rounded-xs">CASHFREE_APP_ID</code> &amp; <code className="bg-amber-100 px-1 py-0.5 rounded-xs">CASHFREE_SECRET_KEY</code>) must be configured in your environment to accept test or live payments.
                   </p>
                 </div>
               </div>
@@ -300,3 +313,4 @@ export function RazorpayCheckoutWidget({
     </>
   );
 }
+

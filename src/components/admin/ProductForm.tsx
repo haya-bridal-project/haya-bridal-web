@@ -348,7 +348,7 @@ export function ProductForm({
         {/* 2. Core Identity & Pricing */}
         <div className="bg-[#FFFDF9] border border-[#E8DDD1] rounded-sm p-6 shadow-xs space-y-4">
           <h2 className="font-serif text-lg text-[#2B211C] font-normal pb-2 border-b border-[#E8DDD1]">
-            2. Basic Details &amp; Razorpay Purchase Pricing
+            2. Basic Details &amp; Cashfree Purchase Pricing
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -415,7 +415,7 @@ export function ProductForm({
                   className="w-full text-xs bg-white border border-[#E8DDD1] rounded-sm pl-7 pr-3 py-2 text-[#2B211C] font-semibold focus:outline-none focus:border-[#B06F5E]"
                 />
               </div>
-              <span className="text-[10px] text-[#7A6A5F] mt-0.5 block">Prepaid via Razorpay</span>
+              <span className="text-[10px] text-[#7A6A5F] mt-0.5 block">Prepaid via Cashfree</span>
             </div>
 
             <div>

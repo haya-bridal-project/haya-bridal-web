@@ -133,7 +133,7 @@ export default async function HomePage() {
               Bespoke Bridal Couture &amp; Handcrafted Ornaments
             </h2>
             <p className="text-xs sm:text-sm text-[#7A6A5F] max-w-2xl mx-auto leading-relaxed mb-8">
-              Every bridal dress is crafted with museum-grade care and personalized to your exact custom measurements. Seamless online payment via Razorpay, strictly zero COD, and secure doorstep delivery.
+              Every bridal dress is crafted with museum-grade care and personalized to your exact custom measurements. Seamless online payment via Cashfree, strictly zero COD, and secure doorstep delivery.
             </p>
             <Link
               href="/how-it-works"

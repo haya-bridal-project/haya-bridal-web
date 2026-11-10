@@ -339,7 +339,7 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by ref, client, phone, item, or Razorpay ID..."
+                placeholder="Search by ref, client, phone, item, or Cashfree ID..."
                 className="w-full text-xs bg-transparent focus:outline-hidden text-[#2B211C] placeholder:text-[#7A6A5F]/70"
               />
               {searchQuery && (
@@ -600,7 +600,7 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
                           {pay.isPaid ? (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xs text-[10px] font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
                               <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                              <span>PAID VIA RAZORPAY</span>
+                              <span>PAID VIA CASHFREE</span>
                             </span>
                           ) : pay.isFailed ? (
                             <div className="space-y-0.5">
@@ -886,7 +886,7 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
                 </div>
               </div>
 
-              {/* Grid 2 Columns: Item & Customization | Client Shipping & Razorpay */}
+              {/* Grid 2 Columns: Item & Customization | Client Shipping & Cashfree */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Left Column: Product & Customization Details */}
                 <div className="p-4 bg-[#FAF6F0] rounded-xs border border-[#E8DDD1] space-y-3 text-xs">
@@ -968,7 +968,7 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
                   )}
                 </div>
 
-                {/* Right Column: Customer Shipping & Razorpay Payment */}
+                {/* Right Column: Customer Shipping & Cashfree Payment */}
                 <div className="space-y-4">
                   {/* Customer Contact & Address */}
                   <div className="p-4 bg-[#FAF6F0] rounded-xs border border-[#E8DDD1] space-y-2.5 text-xs">
@@ -1021,12 +1021,12 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
                     </div>
                   </div>
 
-                  {/* Razorpay Online Payment Box */}
+                  {/* Cashfree Online Payment Box */}
                   <div className="p-4 bg-white rounded-xs border border-[#E8DDD1] space-y-3 text-xs shadow-2xs">
                     <div className="flex items-center justify-between pb-2 border-b border-[#E8DDD1]">
                       <div className="flex items-center gap-2 font-semibold uppercase text-[10px] text-[#B06F5E]">
                         <CreditCard className="w-4 h-4" />
-                        <span>Razorpay Online Payment</span>
+                        <span>Cashfree Online Payment</span>
                       </div>
                       {pay.isPaid ? (
                         <span className="px-2 py-0.5 rounded-xs text-[10px] font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
@@ -1073,11 +1073,11 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
                       </span>
                     </div>
 
-                    {/* Razorpay Transaction Identifiers */}
+                    {/* Cashfree Transaction Identifiers */}
                     <div className="pt-2 border-t border-[#E8DDD1] space-y-1.5 text-[11px] bg-[#FAF6F0] p-2.5 rounded-xs border border-[#E8DDD1]/80">
                       {pay.latestPayment?.razorpay_order_id && (
                         <div className="flex justify-between items-center">
-                          <span className="text-[#7A6A5F]">Razorpay Order ID:</span>
+                          <span className="text-[#7A6A5F]">Cashfree Order ID:</span>
                           <div className="flex items-center gap-1 font-mono text-[#2B211C]">
                             <span>{pay.latestPayment.razorpay_order_id}</span>
                             <button
@@ -1094,7 +1094,7 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
 
                       {pay.latestPayment?.razorpay_payment_id && (
                         <div className="flex justify-between items-center">
-                          <span className="text-[#7A6A5F]">Razorpay Payment ID:</span>
+                          <span className="text-[#7A6A5F]">Cashfree Payment ID:</span>
                           <div className="flex items-center gap-1 font-mono text-emerald-700 font-semibold">
                             <span>{pay.latestPayment.razorpay_payment_id}</span>
                             <button

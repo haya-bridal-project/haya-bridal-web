@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Heritage Fine Ornaments & Bridal Jewelry — Haya Bridal Couture",
   description:
-    "Explore our heirloom bridal jewelry, temple necklaces, choker sets, and fine ornaments. Secure online checkout powered by Razorpay with insured doorstep delivery.",
+    "Explore our heirloom bridal jewelry, temple necklaces, choker sets, and fine ornaments. Secure online checkout powered by Cashfree with insured doorstep delivery.",
 };
 
 interface OrnamentsPageProps {

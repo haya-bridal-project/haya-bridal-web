@@ -126,7 +126,7 @@ export function ProductBookingWidget({
     message: "",
   });
 
-  // Action for Ornaments (Proceed to direct Razorpay Checkout)
+  // Action for Ornaments (Proceed to direct Cashfree Checkout)
   const handleProceedBuy = () => {
     const query = new URLSearchParams({
       size: selectedSize,
@@ -686,7 +686,7 @@ export function ProductBookingWidget({
       )}
 
       {/* ========================================================================= */}
-      {/* SECTION B: ORNAMENT DIRECT RAZORPAY BUY ACTION                            */}
+      {/* SECTION B: ORNAMENT DIRECT CASHFREE BUY ACTION                            */}
       {/* ========================================================================= */}
       {isOrnament && (
         <div className="mt-6 space-y-4">

@@ -14,12 +14,10 @@ export async function POST(request: NextRequest) {
     const {
       booking_id,
       access_token,
-      razorpay_order_id,
-      razorpay_payment_id,
+      order_id,
+      cf_payment_id,
       error_code,
       error_description,
-      error_source,
-      error_step,
       error_reason,
     } = body;
 
@@ -29,7 +27,6 @@ export async function POST(request: NextRequest) {
 
     const serviceClient = createServiceClient();
 
-    // Fetch booking
     const { data: bookingData, error: bError } = await serviceClient
       .from("bookings")
       .select("*")
@@ -51,25 +48,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, notice: "Order already confirmed and paid" });
     }
 
-    const failureReason = error_description || error_reason || error_code || "Payment declined or cancelled";
+    const failureReason =
+      error_description || error_reason || error_code || "Payment declined or cancelled";
     const failureCode = error_code || "PAYMENT_FAILED";
 
-    // 1. Update payments table if razorpay_order_id is provided
-    if (razorpay_order_id) {
+    if (order_id) {
       await serviceClient
         .from("payments")
         .update({
           status: "failed",
-          razorpay_payment_id: razorpay_payment_id || null,
+          razorpay_payment_id: cf_payment_id ? String(cf_payment_id) : null,
           error_code: failureCode,
           error_description: failureReason,
         })
-        .eq("razorpay_order_id", razorpay_order_id);
+        .eq("razorpay_order_id", order_id);
     }
 
-    // 2. Update booking payment_status to failed and log failure note for admin
     const timestampStr = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
-    const noteEntry = `[${timestampStr}] Razorpay Payment Failed: ${failureReason} (Code: ${failureCode}${error_step ? `, Step: ${error_step}` : ""})`;
+    const noteEntry = `[${timestampStr}] Cashfree Payment Failed: ${failureReason} (Code: ${failureCode})`;
     const updatedNotes = booking.admin_notes ? `${booking.admin_notes}\n${noteEntry}` : noteEntry;
 
     await serviceClient
@@ -80,7 +76,6 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", booking.id);
 
-    // 3. Log event
     await serviceClient.from("booking_events").insert({
       booking_id: booking.id,
       event_type: "payment_failed",
@@ -89,15 +84,15 @@ export async function POST(request: NextRequest) {
       note: noteEntry,
     });
 
-    if (razorpay_payment_id) {
-      emailPaymentFailed(booking, razorpay_payment_id).catch((e) =>
+    if (cf_payment_id) {
+      emailPaymentFailed(booking, String(cf_payment_id)).catch((e) =>
         console.error("[email] payment failed error", e)
       );
     }
 
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {
-    console.error("[razorpay/failed] error", err);
+    console.error("[cashfree/failed] error", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to register failure" },
       { status: 500 }

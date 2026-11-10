@@ -188,7 +188,7 @@ export default function EnquiryPage() {
                     <option value="Bespoke Bridal Dress Inquiry">Bespoke Bridal Dress Inquiry</option>
                     <option value="Fine Bridal Ornaments Inquiry">Fine Bridal Ornaments Inquiry</option>
                     <option value="Custom Tailoring & Measurements Assistance">Custom Tailoring &amp; Measurements Assistance</option>
-                    <option value="Order & Razorpay Payment Question">Order &amp; Razorpay Payment Question</option>
+                    <option value="Order & Cashfree Payment Question">Order &amp; Cashfree Payment Question</option>
                     <option value="Delivery Timeline & Shipping Inquiry">Delivery Timeline &amp; Shipping Inquiry</option>
                     <option value="General Concierge Assistance">General Concierge Assistance</option>
                   </select>

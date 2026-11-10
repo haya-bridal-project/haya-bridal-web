@@ -60,12 +60,17 @@ export const env = {
       senderName: read("BREVO_SENDER_NAME") ?? "Haya Bridal Couture",
     };
   },
-  razorpay() {
-    const v = requireAll(["RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET"]);
-    return { keyId: v.RAZORPAY_KEY_ID, keySecret: v.RAZORPAY_KEY_SECRET };
+  cashfree() {
+    const v = requireAll(["CASHFREE_APP_ID", "CASHFREE_SECRET_KEY"]);
+    const rawEnv = read("CASHFREE_ENV")?.toLowerCase();
+    const mode: "sandbox" | "production" =
+      rawEnv === "production" || (!rawEnv && !v.CASHFREE_APP_ID.startsWith("TEST"))
+        ? "production"
+        : "sandbox";
+    return { appId: v.CASHFREE_APP_ID, secretKey: v.CASHFREE_SECRET_KEY, mode };
   },
-  razorpayWebhookSecret() {
-    return requireAll(["RAZORPAY_WEBHOOK_SECRET"]).RAZORPAY_WEBHOOK_SECRET;
+  cashfreeWebhookSecret() {
+    return read("CASHFREE_WEBHOOK_SECRET") ?? requireAll(["CASHFREE_SECRET_KEY"]).CASHFREE_SECRET_KEY;
   },
   siteUrl() {
     return (read("NEXT_PUBLIC_SITE_URL") ?? "http://localhost:3000").replace(/\/$/, "");
@@ -77,8 +82,8 @@ export const isConfigured = {
   serviceRole: () => !!read("SUPABASE_SERVICE_ROLE_KEY"),
   cloudinary: () => !!read("CLOUDINARY_CLOUD_NAME") && !!read("CLOUDINARY_API_KEY") && !!read("CLOUDINARY_API_SECRET"),
   brevo: () => !!read("BREVO_API_KEY") && !!read("BREVO_SENDER_EMAIL"),
-  razorpay: () => !!read("RAZORPAY_KEY_ID") && !!read("RAZORPAY_KEY_SECRET") && !!read("SUPABASE_SERVICE_ROLE_KEY"),
-  razorpayWebhook: () => !!read("RAZORPAY_WEBHOOK_SECRET"),
+  cashfree: () => !!read("CASHFREE_APP_ID") && !!read("CASHFREE_SECRET_KEY") && !!read("SUPABASE_SERVICE_ROLE_KEY"),
+  cashfreeWebhook: () => !!read("CASHFREE_WEBHOOK_SECRET") || !!read("CASHFREE_SECRET_KEY"),
 };
 
 export function integrationStatus() {
@@ -87,7 +92,7 @@ export function integrationStatus() {
     serviceRole: isConfigured.serviceRole(),
     cloudinary: isConfigured.cloudinary(),
     brevo: isConfigured.brevo(),
-    razorpay: isConfigured.razorpay(),
-    razorpayWebhook: isConfigured.razorpayWebhook(),
+    cashfree: isConfigured.cashfree(),
+    cashfreeWebhook: isConfigured.cashfreeWebhook(),
   };
 }

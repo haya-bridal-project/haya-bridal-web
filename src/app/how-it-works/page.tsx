@@ -29,10 +29,10 @@ export default function HowItWorksPage() {
 
           <section className="space-y-2">
             <h2 className="font-serif text-xl sm:text-2xl text-[#2B211C]">
-              3. 100% Secure Razorpay Online Checkout (No COD)
+              3. 100% Secure Cashfree Online Checkout (No COD)
             </h2>
             <p>
-              Prepay securely via our integrated Razorpay payment gateway using UPI (Google Pay, PhonePe, Paytm), Credit &amp; Debit Cards, or NetBanking. Please note that Cash on Delivery (COD) is not available for custom couture garments and fine ornaments.
+              Prepay securely via our integrated Cashfree payment gateway using UPI (Google Pay, PhonePe, Paytm), Credit &amp; Debit Cards, or NetBanking. Please note that Cash on Delivery (COD) is not available for custom couture garments and fine ornaments.
             </p>
           </section>
 

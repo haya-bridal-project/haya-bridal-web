@@ -108,7 +108,7 @@ export default async function AdminOverviewPage() {
       icon: CheckCircle2,
     },
     {
-      label: "Razorpay Revenue",
+      label: "Cashfree Revenue",
       value: formatINR(metrics.payments_received_paise),
       sub: `${metrics.payments_count} transactions verified`,
       href: "/admin/bookings",
@@ -175,7 +175,7 @@ export default async function AdminOverviewPage() {
               Recent Client Orders &amp; Customizations
             </h2>
             <p className="text-xs text-[#7A6A5F] mt-0.5">
-              Live orders prepaid via Razorpay gateway
+              Live orders prepaid via Cashfree gateway
             </p>
           </div>
           <Link

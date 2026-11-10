@@ -95,7 +95,7 @@ export default async function CustomerBookingsPage() {
                           href={`/checkout/${b.reference}`}
                           className="px-4 py-2 bg-[#B06F5E] text-white text-xs font-medium rounded-sm hover:bg-[#975D4E] transition-colors"
                         >
-                          Pay via Razorpay
+                          Pay via Cashfree
                         </Link>
                       )}
                       <Link
