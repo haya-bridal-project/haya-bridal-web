@@ -6,19 +6,19 @@ import {
   Clock,
   CheckCircle2,
   CreditCard,
-  ShoppingBag,
   ArrowRight,
-  TrendingUp,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth";
+import { createServiceClient } from "@/lib/supabase/server";
 import { formatINR } from "@/lib/money";
-import { formatDate } from "@/lib/dates";
-import { BOOKING_STATUS_LABEL, PAYMENT_STATUS_LABEL } from "@/lib/labels";
+import { BOOKING_STATUS_LABEL } from "@/lib/labels";
+import type { Booking } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminOverviewPage() {
-  const supabase = await createClient();
+  await requireAdmin();
+  const supabase = createServiceClient();
 
   let metrics = {
     published_products: 0,
@@ -50,7 +50,10 @@ export default async function AdminOverviewPage() {
       supabase.from("payments").select("amount_paise").eq("status", "captured"),
     ]);
 
-    const sumPayments = (paymentsData || []).reduce((acc: number, p: any) => acc + (p.amount_paise || 0), 0);
+    const sumPayments = (paymentsData || []).reduce(
+      (acc: number, p: { amount_paise?: number | null }) => acc + (p.amount_paise || 0),
+      0
+    );
 
     metrics = {
       published_products: pubProducts || 0,
@@ -65,14 +68,14 @@ export default async function AdminOverviewPage() {
   } catch {}
 
   // Fetch 5 latest orders for quick action
-  let latestOrders: any[] = [];
+  let latestOrders: Booking[] = [];
   try {
     const { data } = await supabase
       .from("bookings")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(5);
-    latestOrders = data || [];
+    latestOrders = (data as Booking[]) || [];
   } catch {}
 
   const cards = [
@@ -94,7 +97,7 @@ export default async function AdminOverviewPage() {
       label: "Pending Orders",
       value: metrics.pending_orders,
       sub: "Awaiting payment / processing",
-      href: "/admin/bookings?status=pending",
+      href: "/admin/bookings?status=awaiting_payment",
       icon: Clock,
     },
     {
@@ -198,7 +201,7 @@ export default async function AdminOverviewPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E8DDD1] text-[#2B211C]">
-                {latestOrders.map((b: any) => (
+                {latestOrders.map((b) => (
                   <tr key={b.id} className="hover:bg-[#FAF6F0]/60 transition-colors">
                     <td className="py-3 px-3 font-mono font-medium text-[#B06F5E]">
                       {b.reference}

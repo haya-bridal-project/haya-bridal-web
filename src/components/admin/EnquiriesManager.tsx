@@ -255,17 +255,19 @@ export function EnquiriesManager({ initialEnquiries = [] }: EnquiriesManagerProp
 
         {/* Filter Segmented Control */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 shrink-0">
-          {[
-            { id: "all", label: "All", count: countTotal },
-            { id: "new", label: "New", count: countNew },
-            { id: "in_progress", label: "In Progress", count: countInProgress },
-            { id: "closed", label: "Resolved", count: countClosed },
-          ].map((tab) => {
+          {(
+            [
+              { id: "all", label: "All", count: countTotal },
+              { id: "new", label: "New", count: countNew },
+              { id: "in_progress", label: "In Progress", count: countInProgress },
+              { id: "closed", label: "Resolved", count: countClosed },
+            ] as const
+          ).map((tab) => {
             const isSelected = statusFilter === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() => setStatusFilter(tab.id as any)}
+                onClick={() => setStatusFilter(tab.id)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-sm transition-all whitespace-nowrap shadow-2xs ${
                   isSelected
                     ? "bg-[#2B211C] text-[#FAF6F0]"

@@ -35,19 +35,28 @@ import { formatDate } from "@/lib/dates";
 import { BOOKING_STATUS_LABEL, PAYMENT_STATUS_LABEL } from "@/lib/labels";
 import { ConfirmDialogModal } from "@/components/admin/ConfirmDialogModal";
 import { OrderInvoiceModal } from "@/components/admin/OrderInvoiceModal";
-import type { Booking, DressCustomization, BookingStatus, PaymentStatus } from "@/lib/types";
+import type { Booking, DressCustomization, BookingStatus, Payment, SiteSettings } from "@/lib/types";
+
+export type AdminOrder = Booking & {
+  payments?: Payment[];
+  product?: {
+    id: string;
+    name: string;
+    category?: string | null;
+    product_images?: { url: string; is_primary: boolean }[];
+  } | null;
+};
 
 interface BookingsManagerProps {
-  initialBookings: any[];
-  siteSettings?: any;
+  initialBookings: AdminOrder[];
+  siteSettings?: Partial<SiteSettings>;
 }
 
 export function BookingsManager({ initialBookings = [], siteSettings }: BookingsManagerProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [bookings, setBookings] = useState<any[]>(initialBookings);
-  const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
+  const [bookings, setBookings] = useState<AdminOrder[]>(initialBookings);
+  const [selectedBooking, setSelectedBooking] = useState<AdminOrder | null>(null);
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
@@ -61,19 +70,19 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
 
   // Invoice modal state
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
-  const [invoiceOrders, setInvoiceOrders] = useState<any[]>([]);
+  const [invoiceOrders, setInvoiceOrders] = useState<AdminOrder[]>([]);
 
   // Cancel order modal
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
 
   // Extract payment analysis for an order
-  const getPaymentInfo = (b: any) => {
+  const getPaymentInfo = (b: AdminOrder) => {
     const isPaid =
       b.payment_status === "paid" ||
-      (Array.isArray(b.payments) && b.payments.some((p: any) => p.status === "captured"));
+      (Array.isArray(b.payments) && b.payments.some((p) => p.status === "captured"));
 
     const failedPayment = Array.isArray(b.payments)
-      ? b.payments.find((p: any) => p.status === "failed")
+      ? b.payments.find((p) => p.status === "failed")
       : null;
 
     const isFailed =
@@ -81,7 +90,7 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
 
     const isRefunded =
       b.payment_status === "refunded" ||
-      (Array.isArray(b.payments) && b.payments.some((p: any) => p.status === "refunded"));
+      (Array.isArray(b.payments) && b.payments.some((p) => p.status === "refunded"));
 
     const isAwaiting = !isPaid && !isFailed && !isRefunded;
 
@@ -105,7 +114,7 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
   };
 
   // Effective status: if paid and pending, it's confirmed
-  const getEffectiveStatus = (b: any): string => {
+  const getEffectiveStatus = (b: AdminOrder): string => {
     const pay = getPaymentInfo(b);
     if (pay.isPaid && (b.status === "pending_payment" || b.status === "requested")) {
       return "confirmed";
@@ -114,7 +123,7 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
   };
 
   // Helper to extract customization details from JSON or formatted string
-  const getCustomization = (b: any): DressCustomization | null => {
+  const getCustomization = (b: AdminOrder): DressCustomization | null => {
     if (b.customization && typeof b.customization === "object" && Object.keys(b.customization).length > 0) {
       return b.customization as DressCustomization;
     }
@@ -132,15 +141,15 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
     return null;
   };
 
-  const getProductImage = (b: any): string | null => {
+  const getProductImage = (b: AdminOrder): string | null => {
     const images = b.product?.product_images;
     if (Array.isArray(images) && images.length > 0) {
-      return images.find((i: any) => i.is_primary)?.url || images[0].url;
+      return images.find((i) => i.is_primary)?.url || images[0].url;
     }
     return null;
   };
 
-  const getCategory = (b: any): string => {
+  const getCategory = (b: AdminOrder): string => {
     if (b.order_type) return b.order_type;
     if (b.product?.category) return b.product.category;
     return "dress";
@@ -229,7 +238,7 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
   };
 
   // Print handlers
-  const handlePrintSingle = (order: any, e?: React.MouseEvent) => {
+  const handlePrintSingle = (order: AdminOrder, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setInvoiceOrders([order]);
     setInvoiceModalOpen(true);
@@ -242,7 +251,7 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
     setInvoiceModalOpen(true);
   };
 
-  const handleUpdateStatus = async (newStatus: string) => {
+  const handleUpdateStatus = async (newStatus: BookingStatus) => {
     if (!selectedBooking) return;
     setUpdating(true);
     try {
@@ -257,10 +266,10 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
       });
 
       if (res.ok) {
-        const updated = {
+        const updated: AdminOrder = {
           ...selectedBooking,
-          status: newStatus as any,
-          ...(newStatus === "confirmed" ? { payment_status: "paid" } : {}),
+          status: newStatus,
+          ...(newStatus === "confirmed" ? { payment_status: "paid" as const } : {}),
           admin_notes: transitionNote || selectedBooking.admin_notes,
         };
         setBookings(bookings.map((b) => (b.id === selectedBooking.id ? updated : b)));
@@ -360,16 +369,18 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
 
         {/* Filter Segmented Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 shrink-0">
-          {[
-            { id: "all", label: "All Orders", count: totalCount },
-            { id: "confirmed", label: "Paid & Confirmed", count: confirmedCount },
-            { id: "returned", label: "Shipped", count: shippedCount },
-            { id: "completed", label: "Delivered", count: deliveredCount },
-            { id: "awaiting_payment", label: "Awaiting Payment", count: awaitingPaymentCount },
-            ...(paymentFailedCount > 0
-              ? [{ id: "payment_failed", label: "Payment Failed", count: paymentFailedCount, isDanger: true }]
-              : []),
-          ].map((tab) => {
+          {(
+            [
+              { id: "all", label: "All Orders", count: totalCount, isDanger: false },
+              { id: "confirmed", label: "Paid & Confirmed", count: confirmedCount, isDanger: false },
+              { id: "returned", label: "Shipped", count: shippedCount, isDanger: false },
+              { id: "completed", label: "Delivered", count: deliveredCount, isDanger: false },
+              { id: "awaiting_payment", label: "Awaiting Payment", count: awaitingPaymentCount, isDanger: false },
+              ...(paymentFailedCount > 0
+                ? [{ id: "payment_failed", label: "Payment Failed", count: paymentFailedCount, isDanger: true }]
+                : []),
+            ]
+          ).map((tab) => {
             const isSelected = statusFilter === tab.id;
             return (
               <button
@@ -377,10 +388,10 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
                 onClick={() => setStatusFilter(tab.id)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-sm transition-all whitespace-nowrap shadow-2xs ${
                   isSelected
-                    ? (tab as any).isDanger
+                    ? tab.isDanger
                       ? "bg-red-700 text-white"
                       : "bg-[#2B211C] text-[#FAF6F0]"
-                    : (tab as any).isDanger
+                    : tab.isDanger
                     ? "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
                     : "bg-[#FFFDF9] text-[#7A6A5F] border border-[#E8DDD1] hover:bg-[#FAF6F0] hover:text-[#2B211C]"
                 }`}
@@ -390,7 +401,7 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
                   className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
                     isSelected
                       ? "bg-white/20 text-white"
-                      : (tab as any).isDanger
+                      : tab.isDanger
                       ? "bg-red-100 text-red-800"
                       : "bg-[#FAF6F0] text-[#7A6A5F] border border-[#E8DDD1]"
                   }`}
@@ -1071,7 +1082,7 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
                             <span>{pay.latestPayment.razorpay_order_id}</span>
                             <button
                               type="button"
-                              onClick={(e) => copyToClipboard(pay.latestPayment.razorpay_order_id, "order_id", e)}
+                              onClick={(e) => copyToClipboard(pay.latestPayment?.razorpay_order_id || "", "order_id", e)}
                               className="text-[#7A6A5F] hover:text-[#2B211C]"
                               title="Copy Order ID"
                             >
@@ -1088,7 +1099,7 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
                             <span>{pay.latestPayment.razorpay_payment_id}</span>
                             <button
                               type="button"
-                              onClick={(e) => copyToClipboard(pay.latestPayment.razorpay_payment_id, "pay_id", e)}
+                              onClick={(e) => copyToClipboard(pay.latestPayment?.razorpay_payment_id || "", "pay_id", e)}
                               className="text-[#7A6A5F] hover:text-[#2B211C]"
                               title="Copy Payment ID"
                             >

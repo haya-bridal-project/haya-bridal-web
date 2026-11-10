@@ -8,7 +8,7 @@ export default async function AdminSettingsPage() {
   await requireAdmin();
   const serviceClient = createServiceClient();
 
-  const settingsMap: Record<string, any> = {};
+  const settingsMap: Record<string, unknown> = {};
   try {
     const { data } = await serviceClient.from("site_settings").select("*");
     (data || []).forEach((row) => {

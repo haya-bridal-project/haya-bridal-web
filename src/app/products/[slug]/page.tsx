@@ -7,6 +7,7 @@ import {
   getSiteSettings,
 } from "@/lib/data/public";
 import { getCurrentUser } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { Header } from "@/components/storefront/Header";
 import { Footer } from "@/components/storefront/Footer";
 import { ProductDetailGallery } from "@/components/storefront/ProductDetailGallery";
@@ -46,6 +47,22 @@ export default async function ProductDetailPage(props: ProductPageProps) {
     getRelatedProducts(product.collection_id, product.id, 4),
     getCurrentUser(),
   ]);
+
+  let initialWishlisted = false;
+  if (user) {
+    try {
+      const supabase = await createClient();
+      const { data: w } = await supabase
+        .from("wishlist_items")
+        .select("product_id")
+        .eq("user_id", user.id)
+        .eq("product_id", product.id)
+        .maybeSingle();
+      initialWishlisted = Boolean(w);
+    } catch {
+      initialWishlisted = false;
+    }
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF6F0]">
@@ -98,6 +115,7 @@ export default async function ProductDetailPage(props: ProductPageProps) {
               product={product}
               shipping={settings.shipping}
               boutiquePhone={settings.contact?.whatsapp || settings.contact?.phone || "+91 98765 43210"}
+              initialWishlisted={initialWishlisted}
             />
 
             {/* Additional Garment Specifications / Care card */}
@@ -138,7 +156,7 @@ export default async function ProductDetailPage(props: ProductPageProps) {
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-6">
               {relatedProducts.map((rel) => (
                 <ProductCard key={rel.id} product={rel} />
               ))}

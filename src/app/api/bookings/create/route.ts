@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Try inserting with customization & order_type fields
-    let insertedBooking: any = null;
+    let insertedBooking: Booking | null = null;
     const { data: insertedWithExtra, error: insErrorWithExtra } = await serviceClient
       .from("bookings")
       .insert({
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!insErrorWithExtra && insertedWithExtra) {
-      insertedBooking = insertedWithExtra;
+      insertedBooking = insertedWithExtra as Booking;
     } else {
       // Fallback: If customization/order_type columns don't exist yet in Supabase schema
       const { data: fallbackInserted, error: fallbackError } = await serviceClient
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
         console.error("[bookings] insert error", fallbackError || insErrorWithExtra);
         return NextResponse.json({ error: "Unable to create order record." }, { status: 500 });
       }
-      insertedBooking = fallbackInserted;
+      insertedBooking = fallbackInserted as Booking;
     }
 
     // Trigger Brevo transactional email

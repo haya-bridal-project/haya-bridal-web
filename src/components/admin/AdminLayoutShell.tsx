@@ -44,15 +44,13 @@ export function AdminLayoutShell({
   userEmail,
   role,
 }: AdminLayoutShellProps) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const [menuOpenPath, setMenuOpenPath] = useState<string | null>(null);
   const [signOutModalOpen, setSignOutModalOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const pathname = usePathname();
 
-  // Close mobile drawer on route change
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [pathname]);
+  const mobileMenuOpen = menuOpenPath === pathname;
+  const setMobileMenuOpen = (open: boolean) => setMenuOpenPath(open ? pathname : null);
 
   // Lock body scroll when mobile drawer is open
   useEffect(() => {

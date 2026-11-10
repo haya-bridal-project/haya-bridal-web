@@ -237,7 +237,14 @@ export async function emailRefundUpdate(b: Booking, refund: { id: string; status
 
 export async function emailPasswordResetOtp(to: string, otp: string, userName?: string | null) {
   const c = await ctx();
-  const nameGreeting = userName ? `Dear ${userName}, ` : "Hello, ";
+  const esc = (s?: string | null) => (s ?? "").replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
+  const safeName = userName ? esc(userName) : null;
+  const safeOtp = esc(otp);
+  const nameGreeting = safeName ? `Dear ${safeName}, ` : "Hello, ";
+  const contactLine = [c.contact?.phone, c.contact?.email]
+    .filter((v): v is string => Boolean(v))
+    .map((v) => esc(v))
+    .join(" &middot; ");
   return await sendEmail({
     eventType: "password_reset_otp",
     to,
@@ -245,7 +252,7 @@ export async function emailPasswordResetOtp(to: string, otp: string, userName?: 
     subject: `Your Haya Account Password Reset Code: ${otp}`,
     html: `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Password Reset OTP</title></head>
 <body style="margin:0;padding:0;background:#FAF6F0;font-family:Helvetica,Arial,sans-serif;color:#2B211C">
-<span style="display:none;max-height:0;overflow:hidden">Your password reset verification code is ${otp}</span>
+<span style="display:none;max-height:0;overflow:hidden">Your password reset verification code is ${safeOtp}</span>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAF6F0;padding:32px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:540px;background:#FFFFFF;border:1px solid #E8DDD1;border-radius:4px;overflow:hidden">
 <tr><td style="padding:28px 32px 8px;text-align:center;font-family:Georgia,'Times New Roman',serif;font-size:28px;letter-spacing:1px;color:#2B211C">Haya</td></tr>
@@ -256,14 +263,14 @@ ${nameGreeting}we received a request to reset your password. Use the verificatio
 </td></tr>
 <tr><td align="center" style="padding:10px 32px 20px">
   <div style="display:inline-block;background:#FAF6F0;border:1.5px dashed #B06F5E;border-radius:6px;padding:16px 36px;letter-spacing:8px;font-family:'Courier New',Courier,monospace;font-size:32px;font-weight:bold;color:#B06F5E">
-    ${otp}
+    ${safeOtp}
   </div>
 </td></tr>
 <tr><td style="padding:0 32px 24px;font-size:12px;line-height:19px;color:#7A6A5F;text-align:center">
-This one-time passcode will expire in <strong>10 minutes</strong>. If you did not request this password reset, you can safely ignore this email — your account remains secure.
+This one-time passcode will expire in <strong>10 minutes</strong>. If you did not request this password reset, you can safely ignore this email &mdash; your account remains secure.
 </td></tr>
 <tr><td style="border-top:1px solid #E8DDD1;padding:16px 32px;font-size:11px;color:#7A6A5F;text-align:center">
-Haya Bridal Couture &amp; Fine Ornaments &middot; Secure Client Portal
+${contactLine || "Haya Bridal Couture &amp; Fine Ornaments &middot; Secure Client Portal"}
 </td></tr>
 </table></td></tr></table></body></html>`,
   });

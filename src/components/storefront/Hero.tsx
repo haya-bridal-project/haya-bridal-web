@@ -49,22 +49,50 @@ export function Hero({ slides = [] }: HeroProps) {
     setCurrentSlideIndex((prev) => (prev === activeSlides.length - 1 ? 0 : prev + 1));
   };
 
-  const [imgSrc, setImgSrc] = useState(imageSrc);
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+  const activeImgSrc = failedImages[imageSrc] ? "/hero-bride.png" : imageSrc;
 
   return (
     <section className="relative w-full bg-[#FAF6F0] overflow-hidden min-h-[560px] sm:min-h-[640px] lg:min-h-[700px] xl:min-h-[740px] flex flex-col justify-between border-b border-[#E8DDD1]">
       {/* 1. Full Panoramic Background Photo (Without smoky overlay / blur) */}
       <div className="absolute inset-0 z-0">
         <Image
-          src={imgSrc}
+          src={activeImgSrc}
           alt={currentSlide?.image_alt || heading}
           fill
           priority
-          onError={() => setImgSrc("/hero-bride.png")}
-          className="object-cover object-[center_28%] sm:object-center"
+          onError={() => setFailedImages((prev) => ({ ...prev, [imageSrc]: true }))}
+          className="object-cover object-[center_28%] sm:object-center transition-all duration-700"
           sizes="100vw"
         />
       </div>
+
+      {/* Desktop/Tablet Slide Navigation Controls */}
+      {activeSlides.length > 1 && (
+        <div className="hidden sm:flex absolute bottom-8 right-6 sm:right-10 lg:right-16 z-30 items-center gap-3 select-none">
+          <span className="text-xs sm:text-sm font-serif text-[#7A6A5F] tracking-widest">
+            {slideNumberFormatted} / {totalSlidesFormatted}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePrev}
+              className="w-9 h-9 rounded-full bg-white/95 hover:bg-white text-[#2B211C] shadow-sm hover:shadow-md flex items-center justify-center transition-all hover:scale-105 active:scale-95 focus:outline-none"
+              aria-label="Previous slide"
+            >
+              <ChevronLeft className="w-4 h-4 stroke-[1.8]" />
+            </button>
+            <button
+              type="button"
+              onClick={handleNext}
+              className="w-9 h-9 rounded-full bg-white/95 hover:bg-white text-[#2B211C] shadow-sm hover:shadow-md flex items-center justify-center transition-all hover:scale-105 active:scale-95 focus:outline-none"
+              aria-label="Next slide"
+            >
+              <ChevronRight className="w-4 h-4 stroke-[1.8]" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 2. Top-Right Calligraphy Side Text */}
       <div className="relative z-20 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 flex justify-end">

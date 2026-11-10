@@ -1,8 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Plus, Search, Edit3, Gem } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth";
+import { createServiceClient } from "@/lib/supabase/server";
 import { formatINR } from "@/lib/money";
+import type { ProductWithImages } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -11,10 +13,11 @@ interface AdminProductsPageProps {
 }
 
 export default async function AdminProductsPage(props: AdminProductsPageProps) {
+  await requireAdmin();
   const searchParams = await props.searchParams;
   const q = typeof searchParams.q === "string" ? searchParams.q : "";
 
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   let query = supabase
     .from("products")
@@ -26,7 +29,8 @@ export default async function AdminProductsPage(props: AdminProductsPageProps) {
     query = query.or(`name.ilike.%${q}%,slug.ilike.%${q}%`);
   }
 
-  const { data: products } = await query;
+  const { data } = await query;
+  const products = (data as unknown as ProductWithImages[]) || [];
 
   return (
     <div className="space-y-6">
@@ -69,9 +73,9 @@ export default async function AdminProductsPage(props: AdminProductsPageProps) {
           <>
             {/* Mobile Card List (screens < md) */}
             <div className="md:hidden divide-y divide-[#E8DDD1]">
-              {products.map((p: any) => {
+              {products.map((p) => {
                 const primaryImg =
-                  p.product_images?.find((img: any) => img.is_primary) ||
+                  p.product_images?.find((img) => img.is_primary) ||
                   p.product_images?.[0];
                 const isOrnament = p.category === "ornament" || p.category === "ornaments";
                 const pricePaise = p.price_paise ?? p.rental_price_paise;
@@ -169,9 +173,9 @@ export default async function AdminProductsPage(props: AdminProductsPageProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E8DDD1] text-[#2B211C]">
-                  {products.map((p: any) => {
+                  {products.map((p) => {
                     const primaryImg =
-                      p.product_images?.find((img: any) => img.is_primary) ||
+                      p.product_images?.find((img) => img.is_primary) ||
                       p.product_images?.[0];
                     const isOrnament = p.category === "ornament" || p.category === "ornaments";
                     const pricePaise = p.price_paise ?? p.rental_price_paise;

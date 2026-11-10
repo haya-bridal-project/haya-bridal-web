@@ -16,19 +16,15 @@ export function SplashScreen({ customLogoUrl }: SplashScreenProps) {
     try {
       const shown = sessionStorage.getItem("haya_splash_shown");
       if (!shown) {
-        setVisible(true);
-        // Start fading after 1.4s
-        const fadeTimer = setTimeout(() => {
-          setFading(true);
-        }, 1400);
-
-        // Completely unmount after 1.9s
+        const showTimer = setTimeout(() => setVisible(true), 0);
+        const fadeTimer = setTimeout(() => setFading(true), 1400);
         const hideTimer = setTimeout(() => {
           setVisible(false);
           sessionStorage.setItem("haya_splash_shown", "1");
         }, 1900);
 
         return () => {
+          clearTimeout(showTimer);
           clearTimeout(fadeTimer);
           clearTimeout(hideTimer);
         };

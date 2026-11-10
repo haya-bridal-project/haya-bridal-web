@@ -2,15 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/server";
 import { emailBookingStatusChanged, emailBookingConfirmed } from "@/lib/email/events";
-import type { Booking } from "@/lib/types";
+import type { Booking, BookingStatus } from "@/lib/types";
+
+const ALLOWED_STATUSES: ReadonlySet<BookingStatus> = new Set([
+  "pending_payment",
+  "requested",
+  "confirmed",
+  "rejected",
+  "cancelled",
+  "picked_up",
+  "returned",
+  "completed",
+  "expired",
+]);
 
 export async function POST(request: NextRequest) {
   try {
     await requireAdmin();
     const { booking_id, status, note } = await request.json();
 
-    if (!booking_id || !status) {
-      return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
+    if (!booking_id || !status || !ALLOWED_STATUSES.has(status)) {
+      return NextResponse.json({ error: "Invalid or missing order status parameters" }, { status: 400 });
     }
 
     const serviceClient = createServiceClient();
@@ -26,7 +38,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    const updatePayload: Record<string, any> = {
+    const updatePayload: Record<string, unknown> = {
       status,
       ...(note ? { admin_notes: note } : {}),
       ...(status === "confirmed" ? { payment_status: "paid", hold_expires_at: null } : {}),

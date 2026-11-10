@@ -14,8 +14,16 @@ import {
 } from "lucide-react";
 import { formatINR } from "@/lib/money";
 
+interface SettingsMap {
+  shipping?: { fee_paise?: number; label?: string; estimated_days?: string };
+  booking_workflow?: { mode?: string };
+  contact?: { email?: string; phone?: string; whatsapp?: string; address?: string; hours?: string };
+  contact_info?: { email?: string; phone?: string; whatsapp?: string; address?: string; hours?: string };
+  [key: string]: unknown;
+}
+
 interface SettingsEditorProps {
-  initialSettings: Record<string, any>;
+  initialSettings: SettingsMap;
 }
 
 export function SettingsEditor({ initialSettings = {} }: SettingsEditorProps) {

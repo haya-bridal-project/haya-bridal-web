@@ -28,10 +28,15 @@ export function Header({
 }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [menuOpenPath, setMenuOpenPath] = useState<string | null>(null);
+  const [searchOpenPath, setSearchOpenPath] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const mobileMenuOpen = menuOpenPath === pathname;
+  const searchOpen = searchOpenPath === pathname;
+  const setMobileMenuOpen = (open: boolean) => setMenuOpenPath(open ? pathname : null);
+  const setSearchOpen = (open: boolean) => setSearchOpenPath(open ? pathname : null);
 
   // Lock background scrolling while the mobile menu is open
   useEffect(() => {
@@ -42,12 +47,6 @@ export function Header({
       document.body.style.overflow = prev;
     };
   }, [mobileMenuOpen]);
-
-  // Close mobile menu on route change
-  useEffect(() => {
-    setMobileMenuOpen(false);
-    setSearchOpen(false);
-  }, [pathname]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();

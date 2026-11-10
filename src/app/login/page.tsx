@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -21,12 +21,6 @@ function LoginContent() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (searchParams.get("mode") === "forgot") {
-      setMode("forgot");
-    }
-  }, [searchParams]);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -36,26 +30,10 @@ function LoginContent() {
     try {
       const cleanEmail = email.trim().toLowerCase();
       const supabase = createClient();
-      let { error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
         password,
       });
-
-      // If Supabase blocks on unconfirmed email, auto-confirm and retry immediately
-      if (error && error.message?.toLowerCase().includes("confirm")) {
-        const autoConfirmRes = await fetch("/api/auth/auto-confirm", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: cleanEmail }),
-        });
-        if (autoConfirmRes.ok) {
-          const retry = await supabase.auth.signInWithPassword({
-            email: cleanEmail,
-            password,
-          });
-          error = retry.error;
-        }
-      }
 
       if (error) {
         throw error;
@@ -82,7 +60,7 @@ function LoginContent() {
           setEmail(resetEmail);
           setMode("login");
           setErrorMsg(null);
-          setSuccessMsg("Password reset successfully via Brevo OTP! Please sign in with your new password.");
+          setSuccessMsg("Your password has been reset successfully. Please sign in with your new password.");
         }}
       />
     );

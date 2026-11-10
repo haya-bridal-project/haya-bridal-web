@@ -10,9 +10,10 @@ import {
 import { paiseToRupeesInput } from "@/lib/money";
 import { ConfirmDialogModal } from "@/components/admin/ConfirmDialogModal";
 import { AlertCircle, CheckCircle2, Trash2, Plus, ArrowLeft, Scissors, Gem } from "lucide-react";
+import type { ProductWithImages } from "@/lib/types";
 
 interface ProductFormProps {
-  initialProduct?: any;
+  initialProduct?: ProductWithImages | null;
   collections: { id: string; name: string }[];
 }
 
@@ -59,7 +60,7 @@ export function ProductForm({
   const ORNAMENT_SIZES = ["Free Size", "Standard", "Adjustable"];
 
   const [selectedSizes, setSelectedSizes] = useState<string[]>(
-    initialProduct?.sizes?.length > 0
+    initialProduct && initialProduct.sizes && initialProduct.sizes.length > 0
       ? initialProduct.sizes
       : category === "dress"
       ? ["S", "M", "L", "Custom Fit"]
@@ -75,14 +76,14 @@ export function ProductForm({
 
   // Images state
   const [images, setImages] = useState<UploadedAsset[]>(
-    initialProduct?.product_images?.map((img: any) => ({
+    initialProduct?.product_images?.map((img) => ({
       url: img.url,
       public_id: img.public_id,
-      alt: img.alt,
-      color_name: img.color_name,
+      alt: img.alt ?? undefined,
+      color_name: img.color_name ?? undefined,
       is_primary: img.is_primary,
-      width: img.width,
-      height: img.height,
+      width: img.width ?? undefined,
+      height: img.height ?? undefined,
     })) || []
   );
 

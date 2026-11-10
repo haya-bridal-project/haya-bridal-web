@@ -22,9 +22,25 @@ interface RazorpayCheckoutWidgetProps {
   accessToken?: string | null;
 }
 
+interface RazorpayInstance {
+  open: () => void;
+  on: (event: string, cb: (res: RazorpayFailedResponse) => void) => void;
+}
+
+interface RazorpayFailedResponse {
+  error?: {
+    code?: string;
+    description?: string;
+    source?: string;
+    step?: string;
+    reason?: string;
+    metadata?: { order_id?: string; payment_id?: string };
+  };
+}
+
 declare global {
   interface Window {
-    Razorpay?: any;
+    Razorpay?: new (options: Record<string, unknown>) => RazorpayInstance;
   }
 }
 
@@ -107,8 +123,11 @@ export function RazorpayCheckoutWidget({
         },
       };
 
+      if (!window.Razorpay) {
+        throw new Error("Payment modal is still loading. Please try again in a second.");
+      }
       const rzp = new window.Razorpay(options);
-      rzp.on("payment.failed", async (response: any) => {
+      rzp.on("payment.failed", async (response: RazorpayFailedResponse) => {
         const err = response?.error || {};
         setErrorMsg(err.description || "Payment failed or declined at gateway.");
         setLoading(false);

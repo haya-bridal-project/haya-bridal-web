@@ -31,6 +31,7 @@ interface ProductBookingWidgetProps {
     estimated_days: string;
   };
   boutiquePhone?: string | null;
+  initialWishlisted?: boolean;
 }
 
 function cleanWhatsAppPhone(phone?: string | null): string {
@@ -45,6 +46,7 @@ export function ProductBookingWidget({
   product,
   shipping,
   boutiquePhone,
+  initialWishlisted = false,
 }: ProductBookingWidgetProps) {
   const router = useRouter();
 
@@ -89,8 +91,32 @@ export function ProductBookingWidget({
   const [enquiryOpen, setEnquiryOpen] = useState(false);
   const [enquirySuccess, setEnquirySuccess] = useState(false);
   const [enquirySubmitting, setEnquirySubmitting] = useState(false);
-  const [wishlisted, setWishlisted] = useState(false);
+  const [wishlisted, setWishlisted] = useState(initialWishlisted);
+  const [wishlistToggling, setWishlistToggling] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
+
+  const handleToggleWishlist = async () => {
+    if (wishlistToggling) return;
+    setWishlistToggling(true);
+    const nextState = !wishlisted;
+    setWishlisted(nextState);
+    try {
+      const res = await fetch("/api/wishlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product_id: product.id, action: nextState ? "add" : "remove" }),
+      });
+      if (res.status === 401) {
+        router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+        return;
+      }
+      if (!res.ok) setWishlisted(!nextState);
+    } catch {
+      setWishlisted(!nextState);
+    } finally {
+      setWishlistToggling(false);
+    }
+  };
 
   // Form states for general enquiry modal
   const [enquiryForm, setEnquiryForm] = useState({
@@ -287,9 +313,10 @@ export function ProductBookingWidget({
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
-            onClick={() => setWishlisted(!wishlisted)}
+            onClick={handleToggleWishlist}
+            disabled={wishlistToggling}
             className="p-2.5 rounded-full border border-[#E8DDD1] hover:border-[#B06F5E] text-[#2B211C] hover:text-[#B06F5E] transition-colors"
-            aria-label="Wishlist"
+            aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
           >
             <Heart
               className={`w-4 h-4 ${

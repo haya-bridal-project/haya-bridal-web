@@ -92,21 +92,38 @@ export async function POST(request: NextRequest) {
       productId = fallbackProd.id;
     }
 
-    // 2. Insert images into product_images table
+    // 2. Insert images into product_images table (enforce single primary image)
     if (productId && Array.isArray(images) && images.length > 0) {
-      const imageRows = images.map((img: any, idx: number) => ({
+      type ImgInput = {
+        url: string;
+        public_id: string;
+        alt?: string;
+        color_name?: string;
+        is_primary?: boolean;
+        width?: number;
+        height?: number;
+      };
+      const typedImages = images as ImgInput[];
+      const explicitPrimary = typedImages.findIndex((i) => i.is_primary);
+      const primaryIdx = explicitPrimary >= 0 ? explicitPrimary : 0;
+
+      const imageRows = typedImages.map((img, idx) => ({
         product_id: productId,
         url: img.url,
         public_id: img.public_id,
         alt: img.alt || name,
         color_name: img.color_name || null,
-        is_primary: idx === 0 || !!img.is_primary,
+        is_primary: idx === primaryIdx,
         sort_order: idx,
         width: img.width || null,
         height: img.height || null,
       }));
 
-      await serviceClient.from("product_images").insert(imageRows);
+      const { error: imgError } = await serviceClient.from("product_images").insert(imageRows);
+      if (imgError) {
+        console.error("[admin/products] image insert error", imgError);
+        return NextResponse.json({ error: imgError.message }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ ok: true, id: productId });

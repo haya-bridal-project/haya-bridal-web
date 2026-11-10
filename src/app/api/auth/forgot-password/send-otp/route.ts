@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { createPasswordResetOtp } from "@/lib/auth-token";
+import {
+  createPasswordResetOtp,
+  findAuthUserByEmail,
+  OTP_RESEND_COOLDOWN_MS,
+  type StoredPasswordReset,
+} from "@/lib/auth-token";
 import { emailPasswordResetOtp } from "@/lib/email/events";
-import { isConfigured } from "@/lib/env";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,59 +17,88 @@ export async function POST(request: NextRequest) {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(cleanEmail)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
     }
 
     const serviceClient = createServiceClient();
 
-    // Verify user exists in Supabase Auth
-    const { data: listData, error: listError } = await serviceClient.auth.admin.listUsers({
-      perPage: 1000,
-    });
-
-    if (listError) {
-      console.error("[send-otp] failed to list auth users", listError);
+    let user;
+    try {
+      user = await findAuthUserByEmail(serviceClient, cleanEmail);
+    } catch (listError) {
+      console.error("[send-otp] failed to query auth users", listError);
       return NextResponse.json({ error: "Unable to verify account. Please try again." }, { status: 500 });
     }
 
-    const user = listData?.users?.find((u) => u.email?.toLowerCase() === cleanEmail);
-
     if (!user) {
       return NextResponse.json(
-        { error: "No client account found with this email address. Please register or check for typos." },
+        { error: "No client account found with this email address. Please check for typos or create an account." },
         { status: 404 }
       );
     }
 
-    // Generate secure 6-digit OTP and HMAC signed token
-    const { otp, resetToken } = createPasswordResetOtp(cleanEmail);
+    // Do not allow studio staff/admin accounts to be reset via public storefront OTP
+    const { data: adminRecord } = await serviceClient
+      .from("admin_users")
+      .select("role")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    // Send OTP via Brevo
+    if (adminRecord) {
+      return NextResponse.json(
+        { error: "Staff accounts cannot be reset here. Please contact the studio owner." },
+        { status: 403 }
+      );
+    }
+
+    // Enforce server-side per-account resend cooldown
+    const existingReset = user.app_metadata?.password_reset as StoredPasswordReset | undefined;
+    if (existingReset?.sentAt && !existingReset.usedAt) {
+      const elapsed = Date.now() - existingReset.sentAt;
+      if (elapsed < OTP_RESEND_COOLDOWN_MS) {
+        const waitSec = Math.ceil((OTP_RESEND_COOLDOWN_MS - elapsed) / 1000);
+        return NextResponse.json(
+          { error: `Please wait ${waitSec} seconds before requesting another code.` },
+          { status: 429 }
+        );
+      }
+    }
+
+    const { otp, resetToken, record } = createPasswordResetOtp(cleanEmail);
+
+    const { error: saveErr } = await serviceClient.auth.admin.updateUserById(user.id, {
+      app_metadata: {
+        ...(user.app_metadata ?? {}),
+        password_reset: record,
+      },
+    });
+
+    if (saveErr) {
+      console.error("[send-otp] failed to save OTP state", saveErr);
+      return NextResponse.json({ error: "Unable to initiate password reset. Please try again." }, { status: 500 });
+    }
+
     const userName = user.user_metadata?.full_name || user.user_metadata?.name || null;
     const sendResult = await emailPasswordResetOtp(cleanEmail, otp, userName);
 
-    // Helpful console log for local testing / development
-    console.log(`[Brevo OTP] Generated reset OTP for ${cleanEmail}: ${otp} (Brevo status: ${sendResult?.status})`);
-
-    let notice: string | undefined;
-    if (sendResult?.status === "skipped" || !isConfigured.brevo()) {
-      notice = "Brevo API key is not configured in .env.local yet. The OTP has been logged in your server console.";
+    if (sendResult?.status === "failed") {
+      return NextResponse.json(
+        { error: "Unable to deliver verification email right now. Please try again shortly." },
+        { status: 502 }
+      );
     }
 
     return NextResponse.json({
       ok: true,
       reset_token: resetToken,
       message: `A 6-digit verification code has been sent to ${cleanEmail}.`,
-      notice,
     });
   } catch (err: unknown) {
     console.error("[send-otp] error", err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to generate reset code." },
+      { error: "Failed to send verification code. Please try again." },
       { status: 500 }
     );
   }
 }
-

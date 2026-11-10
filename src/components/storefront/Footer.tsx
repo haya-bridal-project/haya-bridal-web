@@ -26,7 +26,8 @@ const experienceLinks = [
 
 const policyLinks = [
   { label: "Track My Orders", href: "/account/bookings", strong: true },
-  { label: "Cancellation & Refund", href: "/cancellation-refund" },
+  { label: "Delivery & Shipping Policy", href: "/shipping-policy" },
+  { label: "Return, Exchange & Refund", href: "/cancellation-refund" },
   { label: "Terms & Conditions", href: "/terms" },
   { label: "Privacy Policy", href: "/privacy-policy" },
 ];

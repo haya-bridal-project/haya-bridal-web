@@ -40,7 +40,7 @@ export async function PATCH(request: NextRequest, props: RouteParams) {
     const serviceClient = createServiceClient();
 
     // 1. Update product
-    const updatePayload: Record<string, any> = {};
+    const updatePayload: Record<string, unknown> = {};
     if (name) updatePayload.name = name.trim();
     if (slug) updatePayload.slug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
     updatePayload.collection_id = collection_id || null;
@@ -63,9 +63,8 @@ export async function PATCH(request: NextRequest, props: RouteParams) {
     updatePayload.seo_title = seo_title || null;
     updatePayload.seo_description = seo_description || null;
 
-    let pError: any = null;
     const res = await serviceClient.from("products").update(updatePayload).eq("id", id);
-    pError = res.error;
+    let pError = res.error;
 
     if (pError && pError.code === "PGRST204") {
       // If category / allow_customization column not yet in DB schema, retry without them
@@ -80,20 +79,38 @@ export async function PATCH(request: NextRequest, props: RouteParams) {
       return NextResponse.json({ error: pError.message }, { status: 500 });
     }
 
-    // 2. Sync images if provided
+    // 2. Sync images if provided (enforce single primary image)
     if (Array.isArray(images)) {
+      type ImgInput = {
+        url: string;
+        public_id: string;
+        alt?: string;
+        color_name?: string;
+        is_primary?: boolean;
+        width?: number;
+        height?: number;
+      };
+      const typedImages = images as ImgInput[];
       await serviceClient.from("product_images").delete().eq("product_id", id);
-      if (images.length > 0) {
-        const imageRows = images.map((img: any, idx: number) => ({
+      if (typedImages.length > 0) {
+        const explicitPrimary = typedImages.findIndex((i) => i.is_primary);
+        const primaryIdx = explicitPrimary >= 0 ? explicitPrimary : 0;
+
+        const imageRows = typedImages.map((img, idx) => ({
           product_id: id,
           url: img.url,
           public_id: img.public_id,
           alt: img.alt || name || "",
           color_name: img.color_name || null,
-          is_primary: !!img.is_primary,
+          is_primary: idx === primaryIdx,
           sort_order: idx,
+          width: img.width || null,
+          height: img.height || null,
         }));
-        await serviceClient.from("product_images").insert(imageRows);
+        const { error: imgError } = await serviceClient.from("product_images").insert(imageRows);
+        if (imgError) {
+          return NextResponse.json({ error: imgError.message }, { status: 500 });
+        }
       }
     }
 

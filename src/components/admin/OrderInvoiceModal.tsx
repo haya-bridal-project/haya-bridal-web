@@ -4,12 +4,17 @@ import { useEffect, useRef } from "react";
 import { Printer, X } from "lucide-react";
 import { formatINR } from "@/lib/money";
 import { formatDate } from "@/lib/dates";
+import type { Booking, DressCustomization, Payment, SiteSettings } from "@/lib/types";
+
+export type InvoiceOrder = Booking & {
+  payments?: Payment[];
+};
 
 interface OrderInvoiceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  orders: any[];
-  siteSettings?: any;
+  orders: InvoiceOrder[];
+  siteSettings?: Partial<SiteSettings>;
 }
 
 function numberToWordsINR(paise: number): string {
@@ -79,11 +84,15 @@ export function OrderInvoiceModal({ isOpen, onClose, orders, siteSettings }: Ord
 
   const companyName = siteSettings?.brand?.site_name || "Haya";
   const tagline = siteSettings?.brand?.tagline || "Bridal Couture & Fine Ornaments";
-  const companyAddress = siteSettings?.contact?.address || "Luxury Couture Atelier & Boutique Studio, Kerala, India";
-  const companyPhone = siteSettings?.contact?.phone || siteSettings?.contact?.whatsapp || "+91 9995204495";
-  const companyEmail = siteSettings?.contact?.email || "contact@hayabridal.com";
+  const companyAddress = siteSettings?.contact?.address || "Boutique Studio, India";
+  const companyPhone = siteSettings?.contact?.phone || siteSettings?.contact?.whatsapp || null;
+  const companyEmail = siteSettings?.contact?.email || null;
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL && !process.env.NEXT_PUBLIC_SITE_URL.includes("localhost")
+      ? process.env.NEXT_PUBLIC_SITE_URL.replace(/^https?:\/\//, "")
+      : null;
 
-  const getCustomization = (b: any) => {
+  const getCustomization = (b: InvoiceOrder): DressCustomization | null => {
     if (b.customization && typeof b.customization === "object" && Object.keys(b.customization).length > 0) {
       return b.customization;
     }
@@ -102,16 +111,12 @@ export function OrderInvoiceModal({ isOpen, onClose, orders, siteSettings }: Ord
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 print:p-0 print:bg-white print:static print:overflow-visible">
-      
-      {/* Print Specific CSS to Isolate Only the Invoices during window.print() */}
-      <style jsx global>{`
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 print:p-0 print:bg-white print:static print:block print:overflow-visible">
+      <style>{`
         @media print {
-          /* Hide everything in the DOM */
           body * {
             visibility: hidden !important;
           }
-          /* Show ONLY the printable invoice sheets */
           #print-invoice-wrapper,
           #print-invoice-wrapper * {
             visibility: visible !important;
@@ -128,7 +133,6 @@ export function OrderInvoiceModal({ isOpen, onClose, orders, siteSettings }: Ord
           .invoice-page-break {
             page-break-after: always !important;
             break-after: page !important;
-            min-height: 100vh !important;
             margin: 0 !important;
             padding: 24px 32px !important;
             box-shadow: none !important;
@@ -145,32 +149,32 @@ export function OrderInvoiceModal({ isOpen, onClose, orders, siteSettings }: Ord
       `}</style>
 
       {/* Modal Container */}
-      <div className="relative bg-white rounded-md shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden border border-[#E8DDD1] print:max-w-none print:max-h-none print:border-none print:shadow-none print:rounded-none">
-        
-        {/* Top Control Bar (Hidden on Print) */}
-        <div className="no-print bg-[#FAF6F0] border-b border-[#E8DDD1] px-6 py-4 flex items-center justify-between shrink-0">
+      <div className="relative bg-white rounded-md shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden border border-[#E8DDD1] print:max-w-none print:max-h-none print:border-none print:shadow-none print:rounded-none print:overflow-visible print:block">
+        {/* Top Control Bar */}
+        <div className="no-print bg-[#FAF6F0] border-b border-[#E8DDD1] px-4 sm:px-6 py-4 flex items-center justify-between gap-3 shrink-0">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-sans font-semibold uppercase tracking-widest text-[#B06F5E]">
-                Official Invoice
+                Official Receipt
               </span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-white border border-[#E8DDD1] font-mono text-[#7A6A5F]">
                 {orders.length} {orders.length === 1 ? "Invoice" : "Invoices"}
               </span>
             </div>
-            <h2 className="font-serif text-xl text-[#2B211C] font-normal mt-0.5">
-              {orders.length === 1 ? `Tax Invoice — ${orders[0].reference}` : `Batch Invoice Print (${orders.length} Orders)`}
+            <h2 className="font-serif text-lg sm:text-xl text-[#2B211C] font-normal mt-0.5">
+              {orders.length === 1 ? `Invoice — ${orders[0].reference}` : `Batch Invoice Print (${orders.length} Orders)`}
             </h2>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={handlePrint}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#B06F5E] hover:bg-[#975D4E] text-white rounded-sm text-xs font-medium tracking-wide shadow-xs transition-colors"
+              className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-[#B06F5E] hover:bg-[#975D4E] text-white rounded-sm text-xs font-medium tracking-wide shadow-xs transition-colors"
             >
               <Printer className="w-4 h-4" />
-              <span>Print / Save as PDF</span>
+              <span className="hidden sm:inline">Print / Save as PDF</span>
+              <span className="sm:hidden">Print</span>
             </button>
             <button
               type="button"
@@ -184,25 +188,28 @@ export function OrderInvoiceModal({ isOpen, onClose, orders, siteSettings }: Ord
         </div>
 
         {/* Scrollable Printable Invoice Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#F4ECE1]/40 print:p-0 print:bg-white">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-8 bg-[#F4ECE1]/40 print:p-0 print:bg-white print:overflow-visible">
           <div id="print-invoice-wrapper" ref={printContainerRef} className="space-y-8 print:space-y-0">
             {orders.map((order, idx) => {
-              const isPaid = order.payment_status === "paid" || order.payments?.some((p: any) => p.status === "captured");
+              const isPaid =
+                order.payment_status === "paid" ||
+                (order.payments?.some((p) => p.status === "captured") ?? false);
               const isFailed = !isPaid && order.payment_status === "failed";
               const latestPayment = order.payments?.[0];
               const custom = getCustomization(order);
               const invoiceNumber = `INV-${order.reference}`;
               const invoiceDate = formatDate(order.created_at);
               const transactionId = latestPayment?.razorpay_payment_id || order.reference;
+              const itemSubtotalPaise =
+                order.rental_amount_paise ?? Math.max(0, order.total_paise - (order.fees_paise ?? 0));
 
               return (
                 <div
                   key={order.id || idx}
-                  className="invoice-page-break bg-white border border-[#E8DDD1] shadow-sm rounded-sm p-8 sm:p-10 max-w-3xl mx-auto print:max-w-none print:border-none print:shadow-none text-[#2B211C] text-xs font-sans relative"
+                  className="invoice-page-break bg-white border border-[#E8DDD1] shadow-sm rounded-sm p-6 sm:p-10 max-w-3xl mx-auto print:max-w-none print:border-none print:shadow-none text-[#2B211C] text-xs font-sans relative"
                 >
-                  {/* 1. Header: Boutique Details From Site Settings & Invoice Metas */}
+                  {/* 1. Header */}
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between pb-6 border-b-2 border-[#2B211C] gap-6">
-                    {/* Company Identity */}
                     <div>
                       <h1 className="font-serif text-3xl font-normal text-[#2B211C] tracking-wide uppercase">
                         {companyName}
@@ -212,17 +219,15 @@ export function OrderInvoiceModal({ isOpen, onClose, orders, siteSettings }: Ord
                       </p>
                       <div className="text-[11px] text-[#7A6A5F] mt-2 space-y-0.5 leading-relaxed">
                         <p className="whitespace-pre-line">{companyAddress}</p>
-                        <p>Kerala, India &bull; GST Registered (0% GST)</p>
                         {companyPhone && <p>Phone / WhatsApp: {companyPhone}</p>}
                         {companyEmail && <p>Email: {companyEmail}</p>}
-                        <p>Official Website: www.hayabridal.com</p>
+                        {siteUrl && <p>Website: {siteUrl}</p>}
                       </div>
                     </div>
 
-                    {/* Invoice Badge & Numbers */}
                     <div className="sm:text-right space-y-1.5 shrink-0">
                       <span className="inline-block px-3 py-1 bg-[#FAF6F0] border border-[#E8DDD1] text-[10px] font-mono font-semibold uppercase tracking-wider text-[#B06F5E]">
-                        Tax Invoice / Bill of Supply
+                        Bill of Supply / Retail Invoice
                       </span>
                       <div className="pt-1">
                         <span className="text-[10px] uppercase text-[#7A6A5F] block">Invoice No:</span>
@@ -239,21 +244,17 @@ export function OrderInvoiceModal({ isOpen, onClose, orders, siteSettings }: Ord
                     </div>
                   </div>
 
-                  {/* 2. Customer & Shipping Destination (2 Columns) */}
+                  {/* 2. Customer & Shipping Destination */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 py-6 border-b border-[#E8DDD1] text-xs">
-                    {/* Billed To */}
                     <div className="space-y-1">
                       <span className="text-[10px] uppercase font-semibold tracking-wider text-[#7A6A5F] block">
                         Billed To (Customer):
                       </span>
                       <p className="font-semibold text-sm text-[#2B211C]">{order.customer_name}</p>
                       <p className="text-[#7A6A5F] font-mono">{order.customer_phone}</p>
-                      {order.customer_email && (
-                        <p className="text-[#7A6A5F]">{order.customer_email}</p>
-                      )}
+                      {order.customer_email && <p className="text-[#7A6A5F]">{order.customer_email}</p>}
                     </div>
 
-                    {/* Ship To Destination */}
                     <div className="space-y-1 sm:border-l sm:border-[#E8DDD1] sm:pl-6">
                       <span className="text-[10px] uppercase font-semibold tracking-wider text-[#7A6A5F] block">
                         Ship To (Delivery Address):
@@ -268,7 +269,7 @@ export function OrderInvoiceModal({ isOpen, onClose, orders, siteSettings }: Ord
                   </div>
 
                   {/* 3. Itemized Table of Goods */}
-                  <div className="py-6 border-b border-[#E8DDD1]">
+                  <div className="py-6 border-b border-[#E8DDD1] overflow-x-auto">
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-[#2B211C] text-[10px] uppercase font-semibold text-[#7A6A5F] tracking-wider">
@@ -288,26 +289,33 @@ export function OrderInvoiceModal({ isOpen, onClose, orders, siteSettings }: Ord
                               {order.product_name}
                             </strong>
                             <span className="text-[10px] text-[#7A6A5F] uppercase tracking-wide">
-                              Category: {order.order_type === "ornament" || order.order_type === "ornaments" ? "Fine Ornament" : "Bridal Couture"}
+                              Category:{" "}
+                              {order.order_type === "ornament" || order.order_type === "ornaments"
+                                ? "Fine Ornament"
+                                : "Bridal Couture"}
                             </span>
                           </td>
                           <td className="py-3 text-[#5A4C42]">
-                            <p>Fit / Size: <strong className="text-[#2B211C]">{order.size || "Standard Free Size"}</strong></p>
-                            {order.color && <p>Color: <span className="text-[#2B211C]">{order.color}</span></p>}
+                            <p>
+                              Fit / Size: <strong className="text-[#2B211C]">{order.size || "Standard Free Size"}</strong>
+                            </p>
+                            {order.color && (
+                              <p>
+                                Color: <span className="text-[#2B211C]">{order.color}</span>
+                              </p>
+                            )}
                           </td>
                           <td className="py-3 text-center font-mono">1</td>
-                          <td className="py-3 text-right font-mono">
-                            {formatINR(order.rental_amount_paise || (order.total_paise - (order.fees_paise || 0)))}
-                          </td>
+                          <td className="py-3 text-right font-mono">{formatINR(itemSubtotalPaise)}</td>
                           <td className="py-3 text-right font-mono font-semibold text-[#2B211C]">
-                            {formatINR(order.rental_amount_paise || (order.total_paise - (order.fees_paise || 0)))}
+                            {formatINR(itemSubtotalPaise)}
                           </td>
                         </tr>
                       </tbody>
                     </table>
                   </div>
 
-                  {/* 4. Bespoke Custom Measurements (If Dress) */}
+                  {/* 4. Bespoke Custom Measurements */}
                   {custom && (
                     <div className="my-5 p-3.5 bg-[#FAF6F0] border border-[#E8DDD1] rounded-xs space-y-1.5">
                       <span className="text-[10px] font-sans font-semibold uppercase tracking-wider text-[#B06F5E] block">
@@ -343,9 +351,8 @@ export function OrderInvoiceModal({ isOpen, onClose, orders, siteSettings }: Ord
                     </div>
                   )}
 
-                  {/* 5. Pricing Breakdown & Simple Payment Summary (No Gateway Brands) */}
+                  {/* 5. Pricing Breakdown */}
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 py-6 border-b border-[#E8DDD1]">
-                    {/* Payment Audit Record (Clean & Simple) */}
                     <div className="sm:col-span-7 space-y-2.5">
                       <span className="text-[10px] uppercase font-semibold tracking-wider text-[#7A6A5F] block">
                         Payment &amp; Settlement Details:
@@ -381,7 +388,6 @@ export function OrderInvoiceModal({ isOpen, onClose, orders, siteSettings }: Ord
                         )}
                       </div>
 
-                      {/* Amount in words */}
                       <div className="pt-1">
                         <span className="text-[10px] uppercase text-[#7A6A5F] block">Amount in Words:</span>
                         <p className="font-serif italic text-xs text-[#2B211C] mt-0.5">
@@ -390,23 +396,18 @@ export function OrderInvoiceModal({ isOpen, onClose, orders, siteSettings }: Ord
                       </div>
                     </div>
 
-                    {/* Price Calculation (Right 5 Cols) */}
                     <div className="sm:col-span-5 space-y-2 text-xs">
                       <div className="flex justify-between text-[#7A6A5F]">
                         <span>Subtotal (Item):</span>
-                        <span className="font-mono text-[#2B211C]">
-                          {formatINR(order.rental_amount_paise || (order.total_paise - (order.fees_paise || 0)))}
-                        </span>
+                        <span className="font-mono text-[#2B211C]">{formatINR(itemSubtotalPaise)}</span>
                       </div>
                       <div className="flex justify-between text-[#7A6A5F]">
                         <span>Insured Express Shipping:</span>
-                        <span className="font-mono text-[#2B211C]">
-                          {formatINR(order.fees_paise || 0)}
-                        </span>
+                        <span className="font-mono text-[#2B211C]">{formatINR(order.fees_paise || 0)}</span>
                       </div>
                       <div className="flex justify-between text-[#7A6A5F]">
-                        <span>Taxes &amp; GST:</span>
-                        <span className="font-mono text-emerald-700">₹0 (Zero GST)</span>
+                        <span>Taxes:</span>
+                        <span className="font-mono text-[#2B211C]">₹0</span>
                       </div>
                       <div className="flex justify-between items-baseline pt-2 border-t-2 border-[#2B211C] text-sm">
                         <strong className="text-[#2B211C] uppercase tracking-wide">Total Payable:</strong>
@@ -417,14 +418,16 @@ export function OrderInvoiceModal({ isOpen, onClose, orders, siteSettings }: Ord
                     </div>
                   </div>
 
-                  {/* 6. Footer & Legal Declarations */}
+                  {/* 6. Footer */}
                   <div className="pt-6 grid grid-cols-1 sm:grid-cols-12 gap-6 items-end text-[10px] text-[#7A6A5F]">
                     <div className="sm:col-span-8 space-y-1">
                       <p className="font-semibold uppercase text-[#2B211C]">Declaration &amp; Terms:</p>
                       <p className="leading-relaxed">
-                        This is a computer-generated tax invoice issued by {companyName}. All bridal ensembles and fine ornaments undergo multi-tier quality checks and insured dispatch.
+                        This is a computer-generated invoice issued by {companyName}. All bridal ensembles and fine ornaments undergo multi-tier quality checks and insured dispatch.
                       </p>
-                      {companyPhone && <p>For alterations, styling consultations, or courier inquiries, contact: {companyPhone}.</p>}
+                      {companyPhone && (
+                        <p>For alterations, styling consultations, or courier inquiries, contact: {companyPhone}.</p>
+                      )}
                     </div>
 
                     <div className="sm:col-span-4 text-center sm:text-right space-y-1">
@@ -443,7 +446,7 @@ export function OrderInvoiceModal({ isOpen, onClose, orders, siteSettings }: Ord
           </div>
         </div>
 
-        {/* Bottom Bar (No-print) */}
+        {/* Bottom Bar */}
         <div className="no-print bg-[#FAF6F0] border-t border-[#E8DDD1] px-6 py-3 flex items-center justify-between text-xs text-[#7A6A5F]">
           <span>Tip: In the print dialog, select &quot;Save as PDF&quot; to export electronic invoice files.</span>
           <button
@@ -454,7 +457,6 @@ export function OrderInvoiceModal({ isOpen, onClose, orders, siteSettings }: Ord
             Close
           </button>
         </div>
-
       </div>
     </div>
   );

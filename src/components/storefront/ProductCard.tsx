@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Heart } from "lucide-react";
@@ -18,6 +19,7 @@ export function ProductCard({
   initialWishlisted = false,
   onWishlistToggle,
 }: ProductCardProps) {
+  const router = useRouter();
   const [wishlisted, setWishlisted] = useState(initialWishlisted);
   const [isToggling, setIsToggling] = useState(false);
 
@@ -41,7 +43,7 @@ export function ProductCard({
         body: JSON.stringify({ product_id: product.id, action: nextState ? "add" : "remove" }),
       });
       if (!res.ok && res.status === 401) {
-        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+        router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
         return;
       }
       onWishlistToggle?.(product.id, nextState);

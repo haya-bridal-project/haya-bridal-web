@@ -4,7 +4,7 @@ import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 
 export const metadata = {
   title: "Forgot Password | Haya Bridal",
-  description: "Reset your Haya Bridal account password with an OTP code sent via Brevo.",
+  description: "Reset your Haya Bridal account password using an email verification code.",
 };
 
 export default function ForgotPasswordPage() {

@@ -65,7 +65,7 @@ export function ForgotPasswordForm({
       setResetToken(data.reset_token);
       setStep("verify");
       setCountdown(45); // 45s resend cooldown
-      setInfoMsg(data.notice || `A 6-digit verification code has been dispatched to ${cleanEmail} via Brevo.`);
+      setInfoMsg(`A 6-digit verification code has been sent to ${cleanEmail}.`);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Error sending reset code.");
     } finally {
@@ -156,7 +156,7 @@ export function ForgotPasswordForm({
               Reset Your Password
             </h3>
             <p className="text-xs text-[#7A6A5F] leading-relaxed">
-              Enter the email associated with your Haya account. We will send you a 6-digit OTP verification code via Brevo.
+              Enter the email associated with your Haya account. We will send a 6-digit verification code to your inbox.
             </p>
           </div>
 
@@ -183,7 +183,7 @@ export function ForgotPasswordForm({
               disabled={loading}
               className="w-full py-3 px-4 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-xs font-medium tracking-wide uppercase rounded-sm shadow-xs transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <span>{loading ? "Sending OTP Code..." : "Send Reset OTP via Brevo"}</span>
+              <span>{loading ? "Sending Verification Code..." : "Send Verification Code"}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>

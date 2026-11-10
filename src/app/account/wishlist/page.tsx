@@ -24,8 +24,8 @@ export default async function CustomerWishlistPage() {
     .eq("user_id", user.id);
 
   const wishlistedProducts = (data || [])
-    .map((item: any) => item.product)
-    .filter(Boolean) as ProductWithImages[];
+    .map((item: { product: unknown }) => item.product as ProductWithImages | null)
+    .filter((p): p is ProductWithImages => Boolean(p));
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF6F0]">
