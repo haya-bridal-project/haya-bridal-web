@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/server";
-import { emailBookingStatusChanged, emailBookingConfirmed } from "@/lib/email/events";
+import {
+  emailBookingStatusChanged,
+  emailBookingConfirmed,
+  emailOrderDelivered,
+  emailOrderShipped,
+} from "@/lib/email/events";
 import type { Booking, BookingStatus } from "@/lib/types";
 
 const ALLOWED_STATUSES: ReadonlySet<BookingStatus> = new Set([
@@ -78,6 +83,14 @@ export async function POST(request: NextRequest) {
       if (status === "confirmed") {
         await emailBookingConfirmed(updatedBooking as Booking, false).catch((e) =>
           console.error("[email] admin confirmed error", e)
+        );
+      } else if (status === "completed") {
+        await emailOrderDelivered(updatedBooking as Booking, note).catch((e) =>
+          console.error("[email] admin delivered error", e)
+        );
+      } else if (status === "returned") {
+        await emailOrderShipped(updatedBooking as Booking, note).catch((e) =>
+          console.error("[email] admin shipped error", e)
         );
       } else if (status === "cancelled" || status === "rejected") {
         await emailBookingStatusChanged(updatedBooking as Booking, note).catch((e) =>

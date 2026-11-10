@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { AlertTriangle, LogOut, Trash2, X } from "lucide-react";
+import { AlertTriangle, LogOut, Trash2, X, Check, Truck } from "lucide-react";
 
 export interface ConfirmDialogModalProps {
   isOpen: boolean;
@@ -11,7 +11,7 @@ export interface ConfirmDialogModalProps {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
-  variant?: "danger" | "warning" | "signout";
+  variant?: "danger" | "warning" | "signout" | "success" | "info";
   loading?: boolean;
 }
 
@@ -80,6 +80,10 @@ export function ConfirmDialogModal({
             className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 ${
               isSignOut
                 ? "bg-stone-100 text-[#2B211C] border border-stone-200"
+                : variant === "success"
+                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                : variant === "info"
+                ? "bg-blue-50 text-blue-800 border border-blue-200"
                 : variant === "warning"
                 ? "bg-amber-100 text-amber-800 border border-amber-200"
                 : "bg-red-50 text-red-700 border border-red-200"
@@ -87,6 +91,10 @@ export function ConfirmDialogModal({
           >
             {isSignOut ? (
               <LogOut className="w-5 h-5 stroke-[1.6]" />
+            ) : variant === "success" ? (
+              <Check className="w-5 h-5 stroke-[1.6]" />
+            ) : variant === "info" ? (
+              <Truck className="w-5 h-5 stroke-[1.6]" />
             ) : variant === "warning" ? (
               <AlertTriangle className="w-5 h-5 stroke-[1.6]" />
             ) : (
@@ -125,6 +133,10 @@ export function ConfirmDialogModal({
             className={`px-4 py-2 text-xs font-medium rounded-sm transition-colors shadow-xs disabled:opacity-50 inline-flex items-center gap-1.5 ${
               isSignOut
                 ? "bg-[#2B211C] hover:bg-[#B06F5E] text-white"
+                : variant === "success"
+                ? "bg-emerald-700 hover:bg-emerald-800 text-white"
+                : variant === "info"
+                ? "bg-[#2B211C] hover:bg-black text-white"
                 : variant === "warning"
                 ? "bg-amber-700 hover:bg-amber-800 text-white"
                 : "bg-red-700 hover:bg-red-800 text-white"

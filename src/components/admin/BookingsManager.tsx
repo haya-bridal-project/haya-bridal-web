@@ -64,6 +64,7 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
   const [transitionNote, setTransitionNote] = useState("");
   const [updating, setUpdating] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [statusFeedback, setStatusFeedback] = useState<string | null>(null);
 
   // Multi-select for batch actions (e.g. printing invoices)
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
@@ -72,8 +73,68 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [invoiceOrders, setInvoiceOrders] = useState<AdminOrder[]>([]);
 
-  // Cancel order modal
-  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  // Order status update confirmation modal
+  const [statusToConfirm, setStatusToConfirm] = useState<BookingStatus | null>(null);
+
+  const getStatusConfirmationConfig = (status: BookingStatus | null) => {
+    if (!status || !selectedBooking) {
+      return {
+        title: "Update Order Status",
+        message: "Are you sure you want to update this order's status?",
+        confirmLabel: "Update Status",
+        cancelLabel: "Cancel",
+        variant: "warning" as const,
+      };
+    }
+
+    const ref = selectedBooking.reference;
+    const client = selectedBooking.customer_name;
+    const email = selectedBooking.customer_email || "the customer";
+    const noteText = transitionNote.trim() ? ` with note: "${transitionNote.trim()}"` : "";
+
+    switch (status) {
+      case "confirmed":
+        return {
+          title: "Confirm Order & Payment",
+          message: `Are you sure you want to mark order ${ref} for ${client} as Paid & Confirmed? A confirmation email will be sent to ${email}.`,
+          confirmLabel: "Yes, Confirm Order",
+          cancelLabel: "Cancel",
+          variant: "success" as const,
+        };
+      case "returned": // Shipped / In Transit
+        return {
+          title: "Mark Order as Shipped",
+          message: `Are you sure you want to update order ${ref} to Shipped / In Transit${noteText}? A dispatch notification email with tracking details will be sent to ${email}.`,
+          confirmLabel: "Yes, Mark as Shipped",
+          cancelLabel: "Cancel",
+          variant: "info" as const,
+        };
+      case "completed": // Delivered / Fulfilled
+        return {
+          title: "Mark Order as Delivered",
+          message: `Are you sure you want to mark order ${ref} as Delivered & Fulfilled${noteText}? An official delivery confirmation email will be sent to ${email}.`,
+          confirmLabel: "Yes, Mark as Delivered",
+          cancelLabel: "Cancel",
+          variant: "success" as const,
+        };
+      case "cancelled":
+        return {
+          title: "Cancel Order",
+          message: `Are you sure you want to cancel order ${ref} for ${client}${noteText}? This action will record the cancellation and update the order history.`,
+          confirmLabel: "Yes, Cancel Order",
+          cancelLabel: "Keep Order",
+          variant: "danger" as const,
+        };
+      default:
+        return {
+          title: "Update Order Status",
+          message: `Are you sure you want to update order ${ref} to ${status}?`,
+          confirmLabel: "Yes, Update Status",
+          cancelLabel: "Cancel",
+          variant: "warning" as const,
+        };
+    }
+  };
 
   // Extract payment analysis for an order
   const getPaymentInfo = (b: AdminOrder) => {
@@ -275,8 +336,28 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
         setBookings(bookings.map((b) => (b.id === selectedBooking.id ? updated : b)));
         setSelectedBooking(updated);
         setTransitionNote("");
-        setCancelModalOpen(false);
+        setStatusToConfirm(null);
+
+        if (newStatus === "completed") {
+          setStatusFeedback(
+            `Order marked as Delivered. Delivery notification email sent to ${selectedBooking.customer_email || "customer"}.`
+          );
+        } else if (newStatus === "returned") {
+          setStatusFeedback(
+            `Order marked as Shipped. Dispatch notification email sent to ${selectedBooking.customer_email || "customer"}.`
+          );
+        } else if (newStatus === "confirmed") {
+          setStatusFeedback(
+            `Order marked as Confirmed. Confirmation email sent to ${selectedBooking.customer_email || "customer"}.`
+          );
+        }
+        setTimeout(() => setStatusFeedback(null), 6000);
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        alert(errJson.error || "Failed to update order status");
       }
+    } catch (err: any) {
+      alert(err?.message || "Failed to update order status");
     } finally {
       setUpdating(false);
     }
@@ -1162,7 +1243,17 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
                     placeholder="e.g. Dispatched via BlueDart tracking #9823423..."
                     className="w-full text-xs bg-white border border-[#E8DDD1] rounded-sm px-3 py-2 text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
                   />
+                  <p className="text-[11px] text-[#7A6A5F] mt-1">
+                    * Updating status to <strong>Shipped</strong> or <strong>Delivered</strong> automatically dispatches a branded notification email to <strong>{selectedBooking.customer_email || "the customer"}</strong>.
+                  </p>
                 </div>
+
+                {statusFeedback && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xs text-xs text-emerald-900 flex items-center gap-2">
+                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="font-medium">{statusFeedback}</span>
+                  </div>
+                )}
 
                 <div className="flex flex-wrap items-center gap-2 pt-2">
                   {/* Print Invoice Button */}
@@ -1178,7 +1269,7 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
                   <button
                     type="button"
                     disabled={updating || effStatus === "confirmed"}
-                    onClick={() => handleUpdateStatus("confirmed")}
+                    onClick={() => setStatusToConfirm("confirmed")}
                     className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xs text-xs font-medium transition-colors disabled:opacity-40"
                   >
                     Confirm Order &amp; Payment
@@ -1187,7 +1278,7 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
                   <button
                     type="button"
                     disabled={updating || selectedBooking.status === "returned"}
-                    onClick={() => handleUpdateStatus("returned")}
+                    onClick={() => setStatusToConfirm("returned")}
                     className="px-3.5 py-2 bg-[#2B211C] hover:bg-black text-white rounded-xs text-xs font-medium transition-colors disabled:opacity-40 flex items-center gap-1.5"
                   >
                     <Truck className="w-3.5 h-3.5" />
@@ -1197,16 +1288,18 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
                   <button
                     type="button"
                     disabled={updating || selectedBooking.status === "completed"}
-                    onClick={() => handleUpdateStatus("completed")}
-                    className="px-3.5 py-2 bg-stone-700 hover:bg-stone-800 text-white rounded-xs text-xs font-medium transition-colors disabled:opacity-40"
+                    onClick={() => setStatusToConfirm("completed")}
+                    className="px-3.5 py-2 bg-stone-700 hover:bg-stone-800 text-white rounded-xs text-xs font-medium transition-colors disabled:opacity-40 flex items-center gap-1.5"
+                    title="Mark order as delivered and send delivery notification email to customer"
                   >
-                    Delivered / Fulfilled
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Delivered / Fulfilled</span>
                   </button>
 
                   <button
                     type="button"
                     disabled={updating || selectedBooking.status === "cancelled"}
-                    onClick={() => setCancelModalOpen(true)}
+                    onClick={() => setStatusToConfirm("cancelled")}
                     className="px-3.5 py-2 border border-red-300 text-red-700 hover:bg-red-50 rounded-xs text-xs font-medium transition-colors disabled:opacity-40 ml-auto"
                   >
                     Cancel Order
@@ -1226,22 +1319,29 @@ export function BookingsManager({ initialBookings = [], siteSettings }: Bookings
         siteSettings={siteSettings}
       />
 
-      {/* 06. Cancel Order Confirmation Modal */}
-      <ConfirmDialogModal
-        isOpen={cancelModalOpen}
-        onClose={() => setCancelModalOpen(false)}
-        onConfirm={() => handleUpdateStatus("cancelled")}
-        title="Cancel Order"
-        message={
-          selectedBooking
-            ? `Are you sure you want to cancel order ${selectedBooking.reference} for ${selectedBooking.customer_name}?`
-            : "Are you sure you want to cancel this order?"
-        }
-        confirmLabel="Yes, Cancel Order"
-        cancelLabel="Keep Order"
-        variant="danger"
-        loading={updating}
-      />
+      {/* 06. Order Status Confirmation Modal (Every status transition) */}
+      {(() => {
+        const config = getStatusConfirmationConfig(statusToConfirm);
+        return (
+          <ConfirmDialogModal
+            isOpen={statusToConfirm !== null}
+            onClose={() => {
+              if (!updating) setStatusToConfirm(null);
+            }}
+            onConfirm={async () => {
+              if (statusToConfirm) {
+                await handleUpdateStatus(statusToConfirm);
+              }
+            }}
+            title={config.title}
+            message={config.message}
+            confirmLabel={config.confirmLabel}
+            cancelLabel={config.cancelLabel}
+            variant={config.variant}
+            loading={updating}
+          />
+        );
+      })()}
     </div>
   );
 }
