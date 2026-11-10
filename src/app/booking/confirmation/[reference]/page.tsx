@@ -133,6 +133,16 @@ export default async function BookingConfirmationPage(props: ConfirmationPagePro
 
           {/* Action Links */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            {!isPaid && booking.status === "pending_payment" && (
+              <Link
+                href={`/checkout/${booking.reference}${token ? `?t=${encodeURIComponent(token)}` : ""}`}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-[#B06F5E] hover:bg-[#975D4E] text-white text-xs font-medium tracking-wide uppercase rounded-sm shadow-xs transition-colors"
+              >
+                <span>Complete Online Payment</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            )}
+
             {user ? (
               <Link
                 href="/account/bookings"

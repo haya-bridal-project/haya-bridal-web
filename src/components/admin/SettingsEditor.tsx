@@ -19,6 +19,7 @@ interface SettingsMap {
   booking_workflow?: { mode?: string };
   contact?: { email?: string; phone?: string; whatsapp?: string; address?: string; hours?: string };
   contact_info?: { email?: string; phone?: string; whatsapp?: string; address?: string; hours?: string };
+  email?: { admin_notification_email?: string | null };
   [key: string]: unknown;
 }
 
@@ -48,7 +49,10 @@ export function SettingsEditor({ initialSettings = {} }: SettingsEditorProps) {
 
   // Contact Info
   const [supportEmail, setSupportEmail] = useState<string>(
-    initialSettings.contact?.email || initialSettings.contact_info?.email || "concierge@hayabridal.com"
+    initialSettings.contact?.email || initialSettings.contact_info?.email || ""
+  );
+  const [adminNotificationEmail, setAdminNotificationEmail] = useState<string>(
+    initialSettings.email?.admin_notification_email || ""
   );
   const [supportPhone, setSupportPhone] = useState<string>(
     initialSettings.contact?.phone || initialSettings.contact_info?.phone || "+91 98765 43210"
@@ -104,6 +108,9 @@ export function SettingsEditor({ initialSettings = {} }: SettingsEditorProps) {
           whatsapp: whatsappNumber.trim(),
           address: boutiqueAddress.trim(),
           hours: boutiqueHours.trim(),
+        },
+        email: {
+          admin_notification_email: adminNotificationEmail.trim() || null,
         },
       };
 
@@ -393,8 +400,25 @@ export function SettingsEditor({ initialSettings = {} }: SettingsEditorProps) {
               type="email"
               value={supportEmail}
               onChange={(e) => setSupportEmail(e.target.value)}
+              placeholder="concierge@hayabridal.com"
               className="w-full text-xs p-2.5 border border-[#E8DDD1] rounded-sm bg-[#FAF6F0] text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
             />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-[#2B211C] block mb-1">
+              Owner / Admin Order Notification Email(s)
+            </label>
+            <input
+              type="text"
+              value={adminNotificationEmail}
+              onChange={(e) => setAdminNotificationEmail(e.target.value)}
+              placeholder="owner@yourdomain.com (comma-separated for multiple)"
+              className="w-full text-xs p-2.5 border border-[#E8DDD1] rounded-sm bg-[#FAF6F0] text-[#2B211C] focus:outline-none focus:border-[#B06F5E]"
+            />
+            <span className="text-[11px] text-[#7A6A5F] block mt-1">
+              Receives paid order, new order, enquiry, and consultation alerts. Leave blank to fall back to Boutique Email or sender email.
+            </span>
           </div>
 
           <div>

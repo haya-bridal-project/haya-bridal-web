@@ -136,8 +136,8 @@ export async function POST(request: NextRequest) {
       insertedBooking = fallbackInserted as Booking;
     }
 
-    // Trigger Brevo transactional email
-    emailBookingRequested(insertedBooking as Booking).catch((e) =>
+    // Trigger Brevo transactional email (awaited so serverless runtimes don't cut it short)
+    await emailBookingRequested(insertedBooking as Booking).catch((e) =>
       console.error("[email] order notification error", e)
     );
 

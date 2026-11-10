@@ -3,14 +3,47 @@ import { env } from "@/lib/env";
 import { getSiteSettings } from "@/lib/data/public";
 import { formatDate } from "@/lib/dates";
 import { formatINR } from "@/lib/money";
+import { signOrderToken } from "@/lib/guest-token";
 import { sendEmail } from "@/lib/email/send";
 import { bookingRows, layout, type BookingEmailData } from "@/lib/email/templates";
 import type { Booking } from "@/lib/types";
 import { BOOKING_STATUS_LABEL, PAYMENT_STATUS_LABEL } from "@/lib/labels";
 
+function parseEmails(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  return Array.from(
+    new Set(
+      raw
+        .split(",")
+        .map((e) => e.trim())
+        .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))
+    )
+  );
+}
+
 async function ctx() {
   const s = await getSiteSettings();
-  return { contact: s.contact, adminEmail: s.email.admin_notification_email || s.contact.email, site: env.siteUrl() };
+  const rawAdmin =
+    s.email.admin_notification_email ||
+    process.env.ADMIN_NOTIFICATION_EMAIL ||
+    s.contact.email ||
+    process.env.BREVO_SENDER_EMAIL ||
+    null;
+  return {
+    contact: s.contact,
+    adminEmails: parseEmails(rawAdmin),
+    site: env.siteUrl(),
+  };
+}
+
+function orderConfirmationHref(site: string, reference: string) {
+  const token = signOrderToken(reference);
+  return `${site}/booking/confirmation/${encodeURIComponent(reference)}?t=${encodeURIComponent(token)}`;
+}
+
+function orderCheckoutHref(site: string, reference: string) {
+  const token = signOrderToken(reference);
+  return `${site}/checkout/${encodeURIComponent(reference)}?t=${encodeURIComponent(token)}`;
 }
 
 function toData(b: Booking): BookingEmailData {
@@ -31,144 +64,160 @@ function toData(b: Booking): BookingEmailData {
 
 export async function emailEnquiryReceived(e: { id: string; name: string; email: string; phone?: string | null; message: string; productName?: string | null; kind: string }) {
   const c = await ctx();
-  await sendEmail({
-    dedupeKey: `enquiry:${e.id}:customer`,
-    eventType: "enquiry_received",
-    to: e.email,
-    toName: e.name,
-    subject: "We have received your enquiry",
-    relatedType: "enquiry",
-    relatedId: e.id,
-    html: layout({
-      preheader: "Thank you for contacting Haya.",
-      heading: `Thank you, ${e.name}`,
-      intro: "We have received your enquiry and a member of our styling team will get back to you shortly.",
-      rows: [["Outfit", e.productName], ["Your message", e.message]],
-      contact: c.contact,
-    }),
-  });
-  if (c.adminEmail) {
-    await sendEmail({
-      dedupeKey: `enquiry:${e.id}:admin`,
-      eventType: "admin_new_enquiry",
-      to: c.adminEmail,
-      subject: `New ${e.kind === "contact" ? "contact message" : "enquiry"} from ${e.name}`,
+  await Promise.allSettled([
+    sendEmail({
+      dedupeKey: `enquiry:${e.id}:customer`,
+      eventType: "enquiry_received",
+      to: e.email,
+      toName: e.name,
+      subject: "We have received your enquiry",
       relatedType: "enquiry",
       relatedId: e.id,
       html: layout({
-        preheader: "New enquiry",
-        heading: "New enquiry",
-        intro: "A new enquiry was submitted on the website.",
-        rows: [["Name", e.name], ["Email", e.email], ["Phone", e.phone], ["Outfit", e.productName], ["Message", e.message]],
-        cta: { label: "Open in admin", href: `${c.site}/admin/enquiries` },
+        preheader: "Thank you for contacting Haya.",
+        heading: `Thank you, ${e.name}`,
+        intro: "We have received your enquiry and a member of our styling team will get back to you shortly.",
+        rows: [["Outfit", e.productName], ["Your message", e.message]],
+        contact: c.contact,
       }),
-    });
-  }
+    }),
+    ...c.adminEmails.map((adminTo) =>
+      sendEmail({
+        dedupeKey: `enquiry:${e.id}:admin:${adminTo}`,
+        eventType: "admin_new_enquiry",
+        to: adminTo,
+        subject: `New ${e.kind === "contact" ? "contact message" : "enquiry"} from ${e.name}`,
+        relatedType: "enquiry",
+        relatedId: e.id,
+        html: layout({
+          preheader: "New enquiry",
+          heading: "New enquiry",
+          intro: "A new enquiry was submitted on the website.",
+          rows: [["Name", e.name], ["Email", e.email], ["Phone", e.phone], ["Outfit", e.productName], ["Message", e.message]],
+          cta: { label: "Open in admin", href: `${c.site}/admin/enquiries` },
+        }),
+      })
+    ),
+  ]);
 }
 
 export async function emailConsultationReceived(r: { id: string; name: string; email: string; phone: string; preferred_date: string; preferred_time?: string | null; mode: string }) {
   const c = await ctx();
   const modeLabel = r.mode === "video" ? "Video call" : r.mode === "phone" ? "Phone call" : "In store";
-  await sendEmail({
-    dedupeKey: `consultation:${r.id}:customer`,
-    eventType: "consultation_received",
-    to: r.email,
-    toName: r.name,
-    subject: "Your consultation request",
-    relatedType: "consultation",
-    relatedId: r.id,
-    html: layout({
-      preheader: "We have received your consultation request.",
-      heading: "Consultation request received",
-      intro: `Dear ${r.name}, thank you for your request. We will confirm your appointment shortly.`,
-      rows: [["Preferred date", formatDate(r.preferred_date)], ["Preferred time", r.preferred_time], ["Format", modeLabel]],
-      contact: c.contact,
-    }),
-  });
-  if (c.adminEmail) {
-    await sendEmail({
-      dedupeKey: `consultation:${r.id}:admin`,
-      eventType: "admin_new_consultation",
-      to: c.adminEmail,
-      subject: `Consultation request from ${r.name}`,
+  await Promise.allSettled([
+    sendEmail({
+      dedupeKey: `consultation:${r.id}:customer`,
+      eventType: "consultation_received",
+      to: r.email,
+      toName: r.name,
+      subject: "Your consultation request",
       relatedType: "consultation",
       relatedId: r.id,
       html: layout({
-        preheader: "New consultation request",
-        heading: "New consultation request",
-        intro: "A customer requested a consultation.",
-        rows: [["Name", r.name], ["Email", r.email], ["Phone", r.phone], ["Preferred date", formatDate(r.preferred_date)], ["Preferred time", r.preferred_time], ["Format", modeLabel]],
-        cta: { label: "Open in admin", href: `${c.site}/admin/consultations` },
+        preheader: "We have received your consultation request.",
+        heading: "Consultation request received",
+        intro: `Dear ${r.name}, thank you for your request. We will confirm your appointment shortly.`,
+        rows: [["Preferred date", formatDate(r.preferred_date)], ["Preferred time", r.preferred_time], ["Format", modeLabel]],
+        contact: c.contact,
       }),
-    });
-  }
+    }),
+    ...c.adminEmails.map((adminTo) =>
+      sendEmail({
+        dedupeKey: `consultation:${r.id}:admin:${adminTo}`,
+        eventType: "admin_new_consultation",
+        to: adminTo,
+        subject: `Consultation request from ${r.name}`,
+        relatedType: "consultation",
+        relatedId: r.id,
+        html: layout({
+          preheader: "New consultation request",
+          heading: "New consultation request",
+          intro: "A customer requested a consultation.",
+          rows: [["Name", r.name], ["Email", r.email], ["Phone", r.phone], ["Preferred date", formatDate(r.preferred_date)], ["Preferred time", r.preferred_time], ["Format", modeLabel]],
+          cta: { label: "Open in admin", href: `${c.site}/admin/consultations` },
+        }),
+      })
+    ),
+  ]);
 }
 
 export async function emailBookingRequested(b: Booking) {
   const c = await ctx();
-  await sendEmail({
-    dedupeKey: `booking:${b.id}:requested`,
-    eventType: "booking_request_received",
-    to: b.customer_email,
-    toName: b.customer_name,
-    subject: `Order request ${b.reference} received`,
-    relatedType: "booking",
-    relatedId: b.id,
-    html: layout({
-      preheader: "Your order request has been received.",
-      heading: "Order request received",
-      intro: `Dear ${b.customer_name}, we have received your order request. Our team will review your customization details and confirm with you shortly.`,
-      rows: bookingRows(toData(b)),
-      cta: { label: "View order", href: `${c.site}/account/bookings/${b.reference}` },
-      contact: c.contact,
+  await Promise.allSettled([
+    sendEmail({
+      dedupeKey: `booking:${b.id}:requested`,
+      eventType: "booking_request_received",
+      to: b.customer_email,
+      toName: b.customer_name,
+      subject: `Order request ${b.reference} received`,
+      relatedType: "booking",
+      relatedId: b.id,
+      html: layout({
+        preheader: "Your order request has been received.",
+        heading: "Order request received",
+        intro: `Dear ${b.customer_name}, we have received your order request. Our team will review your customization details and confirm with you shortly.`,
+        rows: bookingRows(toData(b)),
+        cta: { label: "View order", href: orderConfirmationHref(c.site, b.reference) },
+        contact: c.contact,
+      }),
     }),
-  });
-  await notifyAdminBooking(b, "New order request");
+    notifyAdminBooking(b, "New order request"),
+  ]);
 }
 
 export async function notifyAdminBooking(b: Booking, title: string) {
   const c = await ctx();
-  if (!c.adminEmail) return;
-  await sendEmail({
-    dedupeKey: `booking:${b.id}:admin:${title}`,
-    eventType: "admin_booking_notification",
-    to: c.adminEmail,
-    subject: `${title}: ${b.reference}`,
-    relatedType: "booking",
-    relatedId: b.id,
-    html: layout({
-      preheader: title,
-      heading: title,
-      intro: `${b.customer_name} (${b.customer_email}, ${b.customer_phone})`,
-      rows: bookingRows(toData(b)),
-      cta: { label: "Open in admin", href: `${c.site}/admin/bookings/${b.id}` },
-    }),
-  });
+  if (c.adminEmails.length === 0) return;
+  await Promise.allSettled(
+    c.adminEmails.map((adminTo) =>
+      sendEmail({
+        dedupeKey: `booking:${b.id}:admin:${title}:${adminTo}`,
+        eventType: "admin_booking_notification",
+        to: adminTo,
+        subject: `${title}: ${b.reference}`,
+        relatedType: "booking",
+        relatedId: b.id,
+        html: layout({
+          preheader: title,
+          heading: title,
+          intro: `${b.customer_name} (${b.customer_email}, ${b.customer_phone})`,
+          rows: [
+            ...bookingRows(toData(b)),
+            ["Address", b.customer_address],
+            ["Notes", b.notes],
+          ],
+          cta: { label: "Open in admin", href: `${c.site}/admin/bookings?search=${encodeURIComponent(b.reference)}` },
+        }),
+      })
+    )
+  );
 }
 
 export async function emailBookingConfirmed(b: Booking, viaPayment: boolean) {
   const c = await ctx();
-  await sendEmail({
-    dedupeKey: `booking:${b.id}:confirmed`,
-    eventType: viaPayment ? "payment_confirmation" : "booking_confirmation",
-    to: b.customer_email,
-    toName: b.customer_name,
-    subject: viaPayment ? `Payment received, order ${b.reference} confirmed` : `Order ${b.reference} confirmed`,
-    relatedType: "booking",
-    relatedId: b.id,
-    html: layout({
-      preheader: "Your Haya order is confirmed.",
-      heading: "Your order is confirmed",
-      intro: viaPayment
-        ? `Dear ${b.customer_name}, we have verified your payment of ${formatINR(b.total_paise)} and your order is confirmed.`
-        : `Dear ${b.customer_name}, your order has been confirmed by our team.`,
-      rows: bookingRows(toData(b)),
-      cta: { label: "View order", href: `${c.site}/account/bookings/${b.reference}` },
-      outro: "We will contact you with shipping and tracking details as your bespoke order is prepared.",
-      contact: c.contact,
+  await Promise.allSettled([
+    sendEmail({
+      dedupeKey: `booking:${b.id}:confirmed`,
+      eventType: viaPayment ? "payment_confirmation" : "booking_confirmation",
+      to: b.customer_email,
+      toName: b.customer_name,
+      subject: viaPayment ? `Payment received, order ${b.reference} confirmed` : `Order ${b.reference} confirmed`,
+      relatedType: "booking",
+      relatedId: b.id,
+      html: layout({
+        preheader: "Your Haya order is confirmed.",
+        heading: "Your order is confirmed",
+        intro: viaPayment
+          ? `Dear ${b.customer_name}, we have verified your payment of ${formatINR(b.total_paise)} and your order is confirmed.`
+          : `Dear ${b.customer_name}, your order has been confirmed by our team.`,
+        rows: bookingRows(toData(b)),
+        cta: { label: "View order", href: orderConfirmationHref(c.site, b.reference) },
+        outro: "We will contact you with shipping and tracking details as your bespoke order is prepared.",
+        contact: c.contact,
+      }),
     }),
-  });
-  if (viaPayment) await notifyAdminBooking(b, "Paid order confirmed");
+    ...(viaPayment ? [notifyAdminBooking(b, "Paid order confirmed")] : []),
+  ]);
 }
 
 export async function emailPaymentFailed(b: Booking, paymentId: string) {
@@ -186,7 +235,7 @@ export async function emailPaymentFailed(b: Booking, paymentId: string) {
       heading: "Payment not completed",
       intro: `Dear ${b.customer_name}, your payment attempt for order ${b.reference} was not successful. You may try again to complete checkout.`,
       rows: bookingRows(toData(b)),
-      cta: { label: "Return to checkout", href: `${c.site}/checkout/${b.reference}` },
+      cta: { label: "Return to checkout", href: orderCheckoutHref(c.site, b.reference) },
       contact: c.contact,
     }),
   });

@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to submit request" }, { status: 500 });
     }
 
-    emailConsultationReceived({
+    await emailConsultationReceived({
       id: data.id,
       name,
       email,

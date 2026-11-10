@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (!uError && updated) {
-        emailBookingRequested(updated as Booking).catch((e) =>
+        await emailBookingRequested(updated as Booking).catch((e) =>
           console.error("[email] convert to request error", e)
         );
       }

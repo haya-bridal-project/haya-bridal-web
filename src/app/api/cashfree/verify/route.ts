@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
         .eq("id", booking.id);
 
       if (cfPayId) {
-        emailPaymentFailed(booking, cfPayId).catch((e) =>
+        await emailPaymentFailed(booking, cfPayId).catch((e) =>
           console.error("[email] payment failed error", e)
         );
       }
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
       note: `Payment verified via Cashfree (${cfPaymentId}, method: ${method})`,
     });
 
-    emailBookingConfirmed(
+    await emailBookingConfirmed(
       { ...booking, status: "confirmed", payment_status: "paid" },
       true
     ).catch((e) => console.error("[email] confirmation error", e));

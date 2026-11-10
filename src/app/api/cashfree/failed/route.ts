@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (cf_payment_id) {
-      emailPaymentFailed(booking, String(cf_payment_id)).catch((e) =>
+      await emailPaymentFailed(booking, String(cf_payment_id)).catch((e) =>
         console.error("[email] payment failed error", e)
       );
     }

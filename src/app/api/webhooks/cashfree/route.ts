@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
             note: `Payment confirmed via Cashfree webhook (${cfPaymentIdStr || orderId}, method: ${method})`,
           });
 
-          emailBookingConfirmed(
+          await emailBookingConfirmed(
             { ...b, status: "confirmed", payment_status: "paid" },
             true
           ).catch((e) => console.error("[email] webhook confirmation error", e));
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
           .eq("id", booking.id);
 
         if (cfPaymentIdStr) {
-          emailPaymentFailed(booking as Booking, cfPaymentIdStr).catch((e) =>
+          await emailPaymentFailed(booking as Booking, cfPaymentIdStr).catch((e) =>
             console.error("[email] payment failed webhook error", e)
           );
         }
@@ -234,7 +234,7 @@ export async function POST(request: NextRequest) {
             .single();
 
           if (booking) {
-            emailRefundUpdate(booking as Booking, {
+            await emailRefundUpdate(booking as Booking, {
               id: refund.refund_id || refundIdStr || "cf_refund",
               status: refund.status_description || "Processed to original payment method",
               amount_paise: refundAmountPaise,

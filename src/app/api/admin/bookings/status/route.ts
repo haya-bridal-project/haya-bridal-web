@@ -76,11 +76,11 @@ export async function POST(request: NextRequest) {
 
     if (updatedBooking) {
       if (status === "confirmed") {
-        emailBookingConfirmed(updatedBooking as Booking, false).catch((e) =>
+        await emailBookingConfirmed(updatedBooking as Booking, false).catch((e) =>
           console.error("[email] admin confirmed error", e)
         );
       } else if (status === "cancelled" || status === "rejected") {
-        emailBookingStatusChanged(updatedBooking as Booking, note).catch((e) =>
+        await emailBookingStatusChanged(updatedBooking as Booking, note).catch((e) =>
           console.error("[email] admin status email error", e)
         );
       }

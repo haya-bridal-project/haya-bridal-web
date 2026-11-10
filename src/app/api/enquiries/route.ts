@@ -38,8 +38,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to submit enquiry" }, { status: 500 });
     }
 
-    // Trigger Brevo email asynchronously
-    emailEnquiryReceived({
+    // Trigger Brevo email (awaited so serverless runtimes don't cut it short)
+    await emailEnquiryReceived({
       id: data.id,
       name,
       email: finalEmail,
