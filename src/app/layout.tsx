@@ -37,6 +37,13 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${plusJakarta.variable} ${cormorant.variable} h-full scroll-smooth antialiased`}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(sessionStorage.getItem("haya_splash_shown")){document.documentElement.classList.add("haya-splash-done")}}catch(e){}`,
+          }}
+        />
+      </head>
       <body
         suppressHydrationWarning
         className="min-h-full flex flex-col bg-[#FAF6F0] text-[#2B211C] font-sans selection:bg-[#B06F5E] selection:text-white"

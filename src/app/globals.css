@@ -74,3 +74,8 @@ h1, h2, h3, h4, .font-editorial {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Hide pre-intro splash before first paint on repeat visits in same session */
+html.haya-splash-done .haya-splash-overlay {
+  display: none !important;
+}
