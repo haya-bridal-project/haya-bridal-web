@@ -2,9 +2,12 @@ import { Suspense } from "react";
 import { HayaLogo } from "@/components/brand/HayaLogo";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 
-export const metadata = {
-  title: "Forgot Password | Haya Bridal",
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Forgot Password",
   description: "Reset your Haya Bridal account password using an email verification code.",
+  robots: { index: false, follow: false },
 };
 
 export default function ForgotPasswordPage() {

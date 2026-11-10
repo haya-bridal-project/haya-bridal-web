@@ -13,14 +13,16 @@ import { Footer } from "@/components/storefront/Footer";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { CollectionFilterSidebar } from "@/components/storefront/CollectionFilterSidebar";
 import { CollectionSortHeader } from "@/components/storefront/CollectionSortHeader";
+import { buildPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Heritage Fine Ornaments & Bridal Jewelry — Haya Bridal Couture",
+export const metadata: Metadata = buildPageMetadata({
+  title: "Heritage Fine Ornaments & Bridal Jewellery",
   description:
-    "Explore our heirloom bridal jewelry, temple necklaces, choker sets, and fine ornaments. Secure online checkout powered by Cashfree with insured doorstep delivery.",
-};
+    "Explore our heirloom bridal jewellery, temple necklaces, kundan chokers, and fine ornaments. Secure online checkout powered by Cashfree with insured pan-India doorstep delivery.",
+  path: "/ornaments",
+});
 
 interface OrnamentsPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;

@@ -13,6 +13,8 @@ import { Footer } from "@/components/storefront/Footer";
 import { ProductDetailGallery } from "@/components/storefront/ProductDetailGallery";
 import { ProductBookingWidget } from "@/components/storefront/ProductBookingWidget";
 import { ProductCard } from "@/components/storefront/ProductCard";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { DEFAULT_OG_IMAGE, getCanonicalSiteUrl } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -23,14 +25,47 @@ interface ProductPageProps {
 export async function generateMetadata(props: ProductPageProps): Promise<Metadata> {
   const { slug } = await props.params;
   const product = await getProductBySlug(slug);
-  if (!product) return { title: "Product Not Found — Haya" };
+  if (!product) {
+    return {
+      title: "Product Not Found",
+      robots: { index: false, follow: false },
+    };
+  }
+
+  const title = product.seo_title || product.name;
+  const description =
+    product.seo_description ||
+    product.short_description ||
+    `Order and customize ${product.name} from Haya Bridal Couture & Fine Ornaments.`;
+  const images =
+    product.product_images?.length > 0
+      ? product.product_images.map((img) => ({
+          url: img.url,
+          alt: img.alt || product.name,
+        }))
+      : [{ url: DEFAULT_OG_IMAGE, width: 1200, height: 630, alt: product.name }];
 
   return {
-    title: `${product.seo_title || product.name} — Haya Bridal Couture & Fine Ornaments`,
-    description:
-      product.seo_description ||
-      product.short_description ||
-      `Order and customize ${product.name} from Haya Bridal Couture.`,
+    title,
+    description,
+    alternates: {
+      canonical: `/products/${slug}`,
+    },
+    openGraph: {
+      title: `${title} | Haya Bridal`,
+      description,
+      url: `/products/${slug}`,
+      siteName: "Haya Bridal",
+      locale: "en_IN",
+      type: "website",
+      images,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | Haya Bridal`,
+      description,
+      images: images.map((img) => img.url),
+    },
   };
 }
 
@@ -64,8 +99,67 @@ export default async function ProductDetailPage(props: ProductPageProps) {
     }
   }
 
+  const siteUrl = getCanonicalSiteUrl();
+  const pricePaise = product.price_paise ?? product.rental_price_paise;
+  const productUrl = `${siteUrl}/products/${product.slug}`;
+  const productImages = product.product_images?.length
+    ? product.product_images.map((img) => img.url)
+    : [`${siteUrl}${DEFAULT_OG_IMAGE}`];
+
+  const productJsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: product.name,
+      description:
+        product.seo_description ||
+        product.short_description ||
+        `Handcrafted ${product.name} at Haya Bridal Couture & Fine Ornaments.`,
+      image: productImages,
+      sku: product.slug,
+      brand: {
+        "@type": "Brand",
+        name: "Haya Bridal",
+      },
+      ...(product.collection?.name ? { category: product.collection.name } : {}),
+      offers: {
+        "@type": "Offer",
+        url: productUrl,
+        priceCurrency: "INR",
+        price: Number((pricePaise / 100).toFixed(2)),
+        availability:
+          product.quantity > 0
+            ? "https://schema.org/InStock"
+            : "https://schema.org/OutOfStock",
+        itemCondition: "https://schema.org/NewCondition",
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+        product.collection
+          ? {
+              "@type": "ListItem",
+              position: 2,
+              name: product.collection.name,
+              item: `${siteUrl}/collections/${product.collection.slug}`,
+            }
+          : {
+              "@type": "ListItem",
+              position: 2,
+              name: "Collections",
+              item: `${siteUrl}/collections`,
+            },
+        { "@type": "ListItem", position: 3, name: product.name, item: productUrl },
+      ],
+    },
+  ];
+
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF6F0]">
+      <JsonLd data={productJsonLd} />
       <Header
         customLogoUrl={settings.brand.logo_url}
         userEmail={user?.email}

@@ -1,6 +1,15 @@
+import type { Metadata } from "next";
 import { PolicyPageLayout } from "@/components/storefront/PolicyPageLayout";
+import { buildPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = buildPageMetadata({
+  title: "About Haya Bridal Couture",
+  description:
+    "Discover the story behind Haya Bridal Couture — crafting handcrafted bridal lehengas, bespoke custom-tailored dresses, and fine heritage bridal ornaments.",
+  path: "/about",
+});
 
 export default async function AboutPage() {
   return (

@@ -1,6 +1,15 @@
+import type { Metadata } from "next";
 import { PolicyPageLayout } from "@/components/storefront/PolicyPageLayout";
+import { buildPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = buildPageMetadata({
+  title: "Terms & Conditions",
+  description:
+    "Terms and conditions for bespoke bridal orders, custom tailoring measurements, and insured courier delivery at Haya Bridal Couture.",
+  path: "/terms",
+});
 
 export default function TermsPage() {
   return (

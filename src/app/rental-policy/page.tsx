@@ -1,6 +1,15 @@
+import type { Metadata } from "next";
 import { PolicyPageLayout } from "@/components/storefront/PolicyPageLayout";
+import { buildPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = buildPageMetadata({
+  title: "Bespoke Order & Customization Policy",
+  description:
+    "Understand custom dress tailoring, Cashfree prepaid online checkout, craftsmanship inspection, and insured courier shipping at Haya Bridal.",
+  path: "/rental-policy",
+});
 
 export default function OrderPolicyPage() {
   return (

@@ -1,6 +1,15 @@
+import type { Metadata } from "next";
 import { PolicyPageLayout } from "@/components/storefront/PolicyPageLayout";
+import { buildPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = buildPageMetadata({
+  title: "Privacy Policy",
+  description:
+    "How Haya Bridal Couture collects, uses, and protects your order measurements, contact details, and Cashfree encrypted payments.",
+  path: "/privacy-policy",
+});
 
 export default function PrivacyPolicyPage() {
   return (

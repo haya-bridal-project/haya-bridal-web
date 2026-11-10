@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { PolicyPageLayout } from "@/components/storefront/PolicyPageLayout";
+import { buildPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Return, Exchange & Refund Policy — Haya Bridal",
+export const metadata: Metadata = buildPageMetadata({
+  title: "Return, Exchange & Refund Policy",
   description:
     "Return eligibility, non-returnable custom bridal wear and jewellery, 24-hour exchange inspection rules, refund timelines, and rental terms at Haya Bridal.",
-};
+  path: "/cancellation-refund",
+});
 
 export default function CancellationRefundPage() {
   return (

@@ -15,6 +15,8 @@ import { Footer } from "@/components/storefront/Footer";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { CollectionFilterSidebar } from "@/components/storefront/CollectionFilterSidebar";
 import { CollectionSortHeader } from "@/components/storefront/CollectionSortHeader";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { buildPageMetadata, getCanonicalSiteUrl } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -26,14 +28,21 @@ interface CollectionPageProps {
 export async function generateMetadata(props: CollectionPageProps): Promise<Metadata> {
   const { slug } = await props.params;
   const collection = await getCollectionBySlug(slug);
-  if (!collection) return { title: "Collection Not Found — Haya" };
-  return {
-    title: `${collection.seo_title || collection.name} — Haya Bridal Couture & Fine Ornaments`,
+  if (!collection) {
+    return {
+      title: "Collection Not Found",
+      robots: { index: false, follow: false },
+    };
+  }
+  return buildPageMetadata({
+    title: collection.seo_title || collection.name,
     description:
       collection.seo_description ||
       collection.description ||
-      `Explore luxury handcrafted ${collection.name} at Haya Bridal.`,
-  };
+      `Explore luxury handcrafted ${collection.name} bridal couture and fine ornaments at Haya Bridal.`,
+    path: `/collections/${slug}`,
+    image: collection.image_url,
+  });
 }
 
 export default async function IndividualCollectionPage(props: CollectionPageProps) {
@@ -85,9 +94,39 @@ export default async function IndividualCollectionPage(props: CollectionPageProp
   const collections = collectionsResult.items;
   const products = productsResult.items;
   const totalCount = productsResult.total;
+  const siteUrl = getCanonicalSiteUrl();
+
+  const collectionJsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      name: collection.name,
+      description:
+        collection.seo_description ||
+        collection.description ||
+        `Explore luxury handcrafted ${collection.name} at Haya Bridal.`,
+      url: `${siteUrl}/collections/${collection.slug}`,
+      ...(collection.image_url ? { image: collection.image_url } : {}),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+        { "@type": "ListItem", position: 2, name: "Collections", item: `${siteUrl}/collections` },
+        {
+          "@type": "ListItem",
+          position: 3,
+          name: collection.name,
+          item: `${siteUrl}/collections/${collection.slug}`,
+        },
+      ],
+    },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF6F0]">
+      <JsonLd data={collectionJsonLd} />
       <Header
         customLogoUrl={settings.brand.logo_url}
         userEmail={user?.email}

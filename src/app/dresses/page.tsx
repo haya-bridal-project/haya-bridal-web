@@ -13,14 +13,16 @@ import { Footer } from "@/components/storefront/Footer";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { CollectionFilterSidebar } from "@/components/storefront/CollectionFilterSidebar";
 import { CollectionSortHeader } from "@/components/storefront/CollectionSortHeader";
+import { buildPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Bespoke Bridal Dresses & Couture Lehengas — Haya Bridal Couture",
+export const metadata: Metadata = buildPageMetadata({
+  title: "Bespoke Bridal Dresses & Couture Lehengas",
   description:
-    "Explore our handcrafted bridal gowns, bespoke lehengas, and couture wedding ensembles. Custom sizing tailored to your exact measurements, ordered directly with our stylists via WhatsApp.",
-};
+    "Explore our handcrafted bridal gowns, bespoke wedding lehengas, and couture bridal ensembles. Custom sizing tailored to your exact measurements with doorstep delivery across India.",
+  path: "/dresses",
+});
 
 interface DressesPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;

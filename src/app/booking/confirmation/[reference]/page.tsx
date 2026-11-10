@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -18,6 +19,11 @@ import { formatDate } from "@/lib/dates";
 import type { Booking } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Order Confirmation",
+  robots: { index: false, follow: false },
+};
 
 interface ConfirmationPageProps {
   params: Promise<{ reference: string }>;

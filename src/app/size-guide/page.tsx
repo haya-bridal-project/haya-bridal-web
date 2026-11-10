@@ -1,7 +1,16 @@
+import type { Metadata } from "next";
 import { PolicyPageLayout } from "@/components/storefront/PolicyPageLayout";
 import { getSizeGuides } from "@/lib/data/public";
+import { buildPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = buildPageMetadata({
+  title: "Bridal Fitting & Size Guide",
+  description:
+    "Complete bridal size and measurement chart for bust, waist, hips, blouse length, and lehenga length at Haya Bridal Couture.",
+  path: "/size-guide",
+});
 
 export default async function SizeGuidePage() {
   const sizeGuides = await getSizeGuides();

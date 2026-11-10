@@ -15,14 +15,16 @@ import { Footer } from "@/components/storefront/Footer";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { CollectionFilterSidebar } from "@/components/storefront/CollectionFilterSidebar";
 import { CollectionSortHeader } from "@/components/storefront/CollectionSortHeader";
+import { buildPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Collections & All Creations — Haya Bridal Couture & Fine Ornaments",
+export const metadata: Metadata = buildPageMetadata({
+  title: "Collections & All Bridal Creations",
   description:
-    "Explore our signature bridal collections alongside our complete catalog of bespoke dresses, couture lehengas, and handcrafted fine ornaments.",
-};
+    "Explore our signature bridal collections alongside our complete catalog of bespoke bridal dresses, couture lehengas, and handcrafted fine ornaments.",
+  path: "/collections",
+});
 
 interface CollectionsPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;

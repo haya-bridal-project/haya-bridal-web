@@ -1,6 +1,15 @@
+import type { Metadata } from "next";
 import { PolicyPageLayout } from "@/components/storefront/PolicyPageLayout";
+import { buildPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = buildPageMetadata({
+  title: "How Bespoke Ordering & Customization Works",
+  description:
+    "Learn how to select your bridal dress or ornaments, submit bespoke custom tailoring measurements, complete secure online payment, and receive insured pan-India delivery.",
+  path: "/how-it-works",
+});
 
 export default function HowItWorksPage() {
   return (

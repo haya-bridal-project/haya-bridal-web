@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { PolicyPageLayout } from "@/components/storefront/PolicyPageLayout";
+import { buildPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Delivery & Shipping Policy — Haya Bridal",
+export const metadata: Metadata = buildPageMetadata({
+  title: "Delivery & Shipping Policy",
   description:
     "Order processing times, Kerala & pan-India delivery estimates, insured shipping charges, order tracking, and delivery support at Haya Bridal.",
-};
+  path: "/shipping-policy",
+});
 
 export default function ShippingPolicyPage() {
   return (

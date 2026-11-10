@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createServiceClient } from "@/lib/supabase/server";
@@ -11,6 +12,11 @@ import { CashfreeCheckoutWidget } from "@/components/storefront/CashfreeCheckout
 import type { Booking } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Secure Checkout",
+  robots: { index: false, follow: false },
+};
 
 interface CheckoutPageProps {
   params: Promise<{ reference: string }>;

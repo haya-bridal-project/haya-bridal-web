@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { ArrowRight, Package } from "lucide-react";
 import {
   getSiteSettings,
@@ -8,6 +9,8 @@ import {
 } from "@/lib/data/public";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_OG_IMAGE, getCanonicalSiteUrl } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { SplashScreen } from "@/components/brand/SplashScreen";
 import { Header } from "@/components/storefront/Header";
 import { Hero } from "@/components/storefront/Hero";
@@ -17,6 +20,24 @@ import { BespokeBridalBanner } from "@/components/storefront/BespokeBridalBanner
 import { Footer } from "@/components/storefront/Footer";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: {
+    absolute: "Haya Bridal — Bespoke Bridal Couture, Lehengas & Fine Ornaments",
+  },
+  description:
+    "Explore handcrafted bridal lehengas, custom-tailored wedding dresses, and heritage bridal jewellery ornaments at Haya Bridal. Secure online checkout and insured delivery across Kerala & India.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "Haya Bridal — Bespoke Bridal Couture, Lehengas & Fine Ornaments",
+    description:
+      "Handcrafted bespoke bridal dresses, wedding lehengas, and heritage fine ornaments with pan-India insured delivery.",
+    url: "/",
+    images: [DEFAULT_OG_IMAGE],
+  },
+};
 
 export default async function HomePage() {
   const [settings, heroSlides, collectionsResult, featuredProducts, user] =
@@ -44,9 +65,46 @@ export default async function HomePage() {
   }
 
   const collections = collectionsResult.items;
+  const siteUrl = getCanonicalSiteUrl();
+  const sameAs = [
+    settings.social?.instagram,
+    settings.social?.facebook,
+    settings.social?.pinterest,
+    settings.social?.youtube,
+  ].filter((v): v is string => Boolean(v && v.startsWith("http")));
+
+  const homeJsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": ["ClothingStore", "JewelryStore", "Organization"],
+      name: settings.brand?.site_name || "Haya Bridal",
+      url: siteUrl,
+      logo: `${siteUrl}/icon-512.png`,
+      image: `${siteUrl}${DEFAULT_OG_IMAGE}`,
+      description:
+        "Bespoke bridal couture dresses, custom-tailored wedding lehengas, and handcrafted bridal jewellery ornaments with insured pan-India delivery.",
+      areaServed: "IN",
+      priceRange: "₹₹₹",
+      ...(settings.contact?.phone ? { telephone: settings.contact.phone } : {}),
+      ...(settings.contact?.email ? { email: settings.contact.email } : {}),
+      ...(sameAs.length > 0 ? { sameAs } : {}),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "Haya Bridal",
+      url: siteUrl,
+      potentialAction: {
+        "@type": "SearchAction",
+        target: `${siteUrl}/collections?q={search_term_string}`,
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF6F0]">
+      <JsonLd data={homeJsonLd} />
       {/* 01. Pre-intro Splash Screen matching reference */}
       <SplashScreen
         customLogoUrl={settings.brand.logo_light_url || settings.brand.logo_url}

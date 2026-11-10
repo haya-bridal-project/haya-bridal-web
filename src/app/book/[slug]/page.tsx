@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import {
@@ -11,6 +12,11 @@ import { Footer } from "@/components/storefront/Footer";
 import { BookingCheckoutForm } from "@/components/storefront/BookingCheckoutForm";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Complete Your Order",
+  robots: { index: false, follow: false },
+};
 
 interface BookPageProps {
   params: Promise<{ slug: string }>;
